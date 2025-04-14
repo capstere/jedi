@@ -6,9 +6,9 @@
   --intro-duration: 6s;
   --delay-after-intro: 2s;           /* Från 6 s till 8 s */
   --logo-animation-duration: 12s;     /* Från t=8 s till t=20 s */
-  --crawl-duration: 30s;             /* Crawl från t=16 s till t=46 s (justera om du vill se crawlen tidigare) */
-  --planet-animation-duration: 8s;   /* Från t=46 s till t=54 s */
-  --final-fade-duration: 3s;         /* Final fade-in från t=54 s */
+  --crawl-duration: 30s;             /* Crawl-animation (t ex: 16 s till 46 s) */
+  --planet-animation-duration: 8s;   /* Planetanimationen (t ex: 46 s till 54 s) */
+  --final-fade-duration: 3s;         /* Final fade-in (t ex: från t=54 s) */
 
   /* Färgparametrar */
   --countdown-color: #ffe81f;
@@ -20,17 +20,16 @@
   /* Inställningar för crawl-animationen */
   --crawl-rotate: 20deg;
   --crawl-scale-end: 0.3;
-  --crawl-translateY-end: -420%;   /* Öka för att crawlen helt ska försvinna uppåt */
-  --crawl-translateZ-end: -1500px;    /* För en bra 3D-effekt */
+  --crawl-translateY-end: -420%;   /* Öka för att texten helt ska försvinna uppåt */
+  --crawl-translateZ-end: -1500px;    /* För en tydlig 3D-effekt */
 }
 
-/* Bakgrund – använd en JPEG som alltid är i bakgrunden */
+/* Global styling: här avlägsnas bakgrundsbilden för en ren svart bakgrund */
 body {
   margin: 0;
   padding: 0;
   font-family: "Droid Sans", Arial, sans-serif;
-  background: url("static/images/background.jpeg") no-repeat center center fixed;
-  background-size: cover;
+  background-color: #000;
   color: white;
   overflow: hidden;
 }
@@ -86,15 +85,15 @@ body {
   100% { opacity: 0; }
 }
 
-/* Logotypen – vi använder h1 med id "logo". Den är centrerad och animeras med en 3D-effekt */
+/* "SPAR WARS" texten (används som logotyp) */
+/* Denna text ska visas vid t=8 s och animeras (krympa och dras bakåt) fram till ca t=20 s */
 #logo {
   display: none;
   position: absolute;
-  top: 50%; /* Justera om du vill ha den högre/lägre */
+  top: 50%; /* Justera om du vill höja eller sänka texten */
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 950;
-  /* Logotypens animation: den krymper och dras bakåt utan att flytta vertikalt extra */
   animation: logoZoom var(--logo-animation-duration) ease-in-out forwards;
 }
 @keyframes logoZoom {
@@ -104,50 +103,42 @@ body {
   }
   100% {
     opacity: 1;
-    /* Här enbart krympning & bakåtförflyttning med translateZ.
-       Justera värdena nedan: exempelvis translateZ(-500px) och scale(0.01) */
+    /* Här tar vi bort extra vertikal förflyttning – vi vill bara krympa / dra bakåt */
     transform: translate(-50%, -50%) translateZ(-500px) scale(0.01);
   }
 }
 
-/* Crawl-texten – vi använder en container med id "crawl-container" */
-#crawl-container {
-  display: none;
+/* Crawl-texten (även kallad titlarna) */
+#titles {
+  display: none; /* Döljs initialt – visas via JS */
   position: absolute;
+  width: 18em;
+  height: 50em;
   bottom: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  perspective: 1500px;
-  z-index: 950;
-}
-.crawl {
-  position: absolute;
   left: 50%;
-  bottom: -50%;
-  width: 100%;
-  transform: translateX(-50%);
-  font-family: 'News Gothic Bold', sans-serif;
-  font-size: 2.5rem;
-  color: var(--countdown-color);
-  text-align: center;
-  line-height: 2.5;
-  animation: crawlAnim var(--crawl-duration) linear forwards;
+  margin-left: -9em;
+  font-size: 350%;
+  text-align: justify;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  transform: perspective(300px) rotateX(25deg);
+  z-index: 900;
 }
-@keyframes crawlAnim {
-  0% {
-    transform: translateX(-50%) translateY(100%) rotateX(var(--crawl-rotate)) translateZ(0) scale(1);
-  }
-  100% {
-    transform: translateX(-50%) translateY(var(--crawl-translateY-end)) rotateX(25deg) translateZ(var(--crawl-translateZ-end)) scale(var(--crawl-scale-end));
-  }
+#titlecontent {
+  position: absolute;
+  top: 100%;
+  animation: scroll var(--crawl-duration) linear forwards;
+}
+@keyframes scroll {
+  0% { top: 100%; }
+  100% { top: -170%; }
 }
 
-/* Planetbilden – placeras högst upp (justera "top" för att stanna tidigare) */
+/* Planetbilden */
 #planet-effect {
-  display: none;
+  display: none; /* Visas via JS */
   position: fixed;
-  top: 0;  /* Ställ in värdet här, ex. 0% eller 20% beroende på hur hög du vill att planeten ska vara */
+  top: 0;  /* Justera detta värde om du vill att planeten ska stanna högre – t.ex. top: 0; eller 20% */
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -167,10 +158,6 @@ body {
 }
 
 /* Final text och knappar */
-@font-face {
-  font-family: 'subset-StarJediRounded';
-  src: url('fonts/subset-StarJediRounded.woff2') format('woff2');
-}
 #main-title {
   display: none;
   position: absolute;
