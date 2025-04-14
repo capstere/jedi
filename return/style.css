@@ -1,11 +1,14 @@
+@import url("https://fonts.googleapis.com/css?family=Droid+Sans:400,700");
+
+/* CSS-variabler för tid, färger och 3D-effekter */
 :root {
-  /* Tidsparametrar – ange med s (sekunder) */
+  /* Tidsparametrar */
   --intro-duration: 6s;
-  --delay-after-intro: 2s;         /* Från 6 s till 8 s */
-  --logo-animation-duration: 12s;   /* Från 8 s till 20 s */
-  --crawl-duration: 30s;           /* Crawl från 19 s till 49 s */
-  --planet-animation-duration: 8s;  /* Från 49 s till 57 s */
-  --final-fade-duration: 3s;        /* Från 57 s och framåt */
+  --delay-after-intro: 2s;           /* Från 6 s till 8 s */
+  --logo-animation-duration: 12s;     /* Från t=8 s till t=20 s */
+  --crawl-duration: 30s;             /* Crawl från t=16 s till t=46 s (justera om du vill se crawlen tidigare) */
+  --planet-animation-duration: 8s;   /* Från t=46 s till t=54 s */
+  --final-fade-duration: 3s;         /* Final fade-in från t=54 s */
 
   /* Färgparametrar */
   --countdown-color: #ffe81f;
@@ -17,17 +20,18 @@
   /* Inställningar för crawl-animationen */
   --crawl-rotate: 20deg;
   --crawl-scale-end: 0.3;
-  --crawl-translateY-end: -300%;    /* Öka för att få texten att röra sig längre upp */
-  --crawl-translateZ-end: -1500px;     /* Öka för att få en bättre 3D-effekt */
+  --crawl-translateY-end: -420%;   /* Öka för att crawlen helt ska försvinna uppåt */
+  --crawl-translateZ-end: -1500px;    /* För en bra 3D-effekt */
 }
 
-/* Global styling */
+/* Bakgrund – använd en JPEG som alltid är i bakgrunden */
 body {
   margin: 0;
   padding: 0;
-  background: black;
+  font-family: "Droid Sans", Arial, sans-serif;
+  background: url("static/images/background.jpeg") no-repeat center center fixed;
+  background-size: cover;
   color: white;
-  font-family: Arial, sans-serif;
   overflow: hidden;
 }
 
@@ -37,7 +41,6 @@ body {
   top: 10%;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'News Gothic Bold', sans-serif;
   font-size: 2rem;
   color: var(--countdown-color);
   text-align: center;
@@ -50,7 +53,6 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'subset-StarJediRounded', sans-serif;
   font-size: 1.8em;
   padding: 20px 40px;
   background-color: var(--button-bg-color);
@@ -75,8 +77,8 @@ body {
 }
 #intro-text br {
   display: block;
-  text-align: left;
   margin-left: 25%;
+  text-align: left;
 }
 @keyframes fadeInOut {
   0% { opacity: 0; }
@@ -84,14 +86,15 @@ body {
   100% { opacity: 0; }
 }
 
-/* Logotypen */
+/* Logotypen – vi använder h1 med id "logo". Den är centrerad och animeras med en 3D-effekt */
 #logo {
-  display: none; /* Visas via JS vid t=8 */
+  display: none;
   position: absolute;
-  top: 50%; /* Justera detta om du vill ha logotypen högre/lägre */
+  top: 50%; /* Justera om du vill ha den högre/lägre */
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 950;
+  /* Logotypens animation: den krymper och dras bakåt utan att flytta vertikalt extra */
   animation: logoZoom var(--logo-animation-duration) ease-in-out forwards;
 }
 @keyframes logoZoom {
@@ -101,20 +104,15 @@ body {
   }
   100% {
     opacity: 1;
-    /* Ändra translateY och scale här för att finjustera hur logotypen krymper och flyttas */
+    /* Här enbart krympning & bakåtförflyttning med translateZ.
+       Justera värdena nedan: exempelvis translateZ(-500px) och scale(0.01) */
     transform: translate(-50%, -50%) translateZ(-500px) scale(0.01);
   }
 }
 
-/* Crawl-texten */
-@font-face {
-  font-family: 'News Gothic Bold';
-  src: url('fonts/NewsGothic-Bold.woff2') format('woff2');
-  font-weight: bold;
-  font-style: normal;
-}
+/* Crawl-texten – vi använder en container med id "crawl-container" */
 #crawl-container {
-  display: none; /* Visas via JS vid t=19 */
+  display: none;
   position: absolute;
   bottom: 0;
   width: 100%;
@@ -145,12 +143,11 @@ body {
   }
 }
 
-/* Planetbilden */
+/* Planetbilden – placeras högst upp (justera "top" för att stanna tidigare) */
 #planet-effect {
   display: none;
   position: fixed;
-  bottom: 0; /* Use bottom instead of top, e.g.: */
-  bottom: 0; /* or any value that fits your design */
+  top: 0;  /* Ställ in värdet här, ex. 0% eller 20% beroende på hur hög du vill att planeten ska vara */
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -158,10 +155,9 @@ body {
   z-index: -2;
   animation: planetSlideIn var(--planet-animation-duration) ease-out forwards;
 }
-
 @keyframes planetSlideIn {
   0% {
-    transform: translateX(-50%) translateY(100%); /* Starts off-screen at the bottom */
+    transform: translateX(-50%) translateY(100%);
     opacity: 0;
   }
   100% {
@@ -182,8 +178,9 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   font-family: 'subset-StarJediRounded', sans-serif;
-  font-size: 3rem;
+  font-size: 4rem;
   color: var(--main-title-color);
+  text-shadow: 2px 2px 8px rgba(255,232,31,0.8), 0 0 20px rgba(255,232,31,1);
   z-index: 1050;
   animation: fadeIn var(--final-fade-duration) ease-out forwards;
 }
@@ -200,20 +197,20 @@ body {
 }
 #buttons .btn {
   font-family: 'subset-StarJediRounded', sans-serif;
-  font-size: 1.2em;
-  padding: 10px 20px;
-  margin: 5px;
-  background-color: var(--button-bg-color);
+  font-size: 1.5em;
+  padding: 12px 24px;
+  margin: 8px;
+  background: linear-gradient(145deg, var(--button-bg-color), #ffd700);
   color: var(--button-text-color);
-  border: none;
-  border-radius: 5px;
+  border: 2px solid black;
+  border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background 0.2s;
 }
 #buttons .btn:hover {
   transform: scale(1.1);
-  background: white;
-  box-shadow: 0 0 10px rgba(255, 232, 31, 0.8);
+  background: linear-gradient(145deg, #ffd700, var(--button-bg-color));
+  box-shadow: 0 0 15px rgba(255,232,31,0.9);
 }
 @keyframes fadeIn {
   from { opacity: 0; }
