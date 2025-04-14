@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Return of the JESP</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Nedräkningstimer -->
+    <div id="countdown"></div>
+    
+    <!-- Startknapp -->
+    <button id="start-button" aria-label="Starta Star Wars-introt">
+      MAY THE JESP BE WITH YOU
+    </button>
+    
+    <!-- Intro-text (blå) -->
+    <div id="intro-text">
+      A long time ago, in a cepheid far,<br>far away...
+    </div>
+    
+    <!-- Logotyp -->
+    <div id="logo">
+      <img src="static/images/starwars_logo.png" alt="Star Wars Logo" />
+    </div>
+    
+    <!-- Crawl-text -->
+    <div id="crawl-container">
+      <div class="crawl">
+        <p class="episode">Episode Rev.J</p>
+        <p class="title"><strong>RETURN OF THE JESP</strong></p>
+<p>The Jedi Knight known only as JESP has been summoned back from self-imposed exile by the FIRST ORDER.</p>
+<p>After vanishing without a trace, JESP was secretly captured by the sinister GURULAB.</p>
+<p>The once-promising Jedi has now escaped and returned to his home planet of BROWSKIS.</p>
+<p>There, alongside the fierce Jedi Knights vdao and ELS, young JESP must once again board the</p>
+<p>Milliliter FALCON Tube, a vessel fully equipped for the mission ahead. Unfortunately, JESP is not.</p>
+<p>He has no plan, no understanding of the objective, and continues to confuse hyperspace with emotional growth.</p>
+<p>Meanwhile, SENATOR TUKA, obsessed with locating JESP, has dispatched thousands of remote probes into the far reaches of space.</p>
+<p>Not to rescue him - but to uncover the full extent of his ignorance.</p>
+<p>Unaware of the trials to come, JESP must now UNLEARN all that he once tried to learn.</p>
+<p>The fate of the galaxy may hang in the balance… but mostly, everyone just wants to know how he made it this far.</p>
+      </div>
+    </div>
+    
+    <!-- Planetbild -->
+    <img id="planet-effect" src="static/images/planet.png" alt="Planet" />
+    
+    <!-- Final text och knappar -->
+    <div id="main-title">RETURN OF THE JESP</div>
+    <div id="buttons">
+      <button class="btn" data-sound="fraga1.mp3">J</button>
+      <button class="btn" data-sound="fraga2.mp3">E</button>
+      <button class="btn" data-sound="fraga3.mp3">S</button>
+      <button class="btn" data-sound="do_it.mp3">P</button>
+    </div>
+    
+    <!-- Ljud -->
+<audio id="bgMusic" src="static/sounds/starwars_theme.mp3" preload="auto" muted></audio>
+    <audio id="soundPlayer"></audio>
+    
+    <!-- Script -->
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,221 @@
+:root {
+  /* Tidsparametrar – ange med s (sekunder) */
+  --intro-duration: 6s;
+  --delay-after-intro: 2s;         /* Från 6 s till 8 s */
+  --logo-animation-duration: 12s;   /* Från 8 s till 20 s */
+  --crawl-duration: 30s;           /* Crawl från 19 s till 49 s */
+  --planet-animation-duration: 8s;  /* Från 49 s till 57 s */
+  --final-fade-duration: 3s;        /* Från 57 s och framåt */
+
+  /* Färgparametrar */
+  --countdown-color: #ffe81f;
+  --button-bg-color: #ffe81f;
+  --button-text-color: black;
+  --intro-text-color: #4ee;
+  --main-title-color: #ffe81f;
+
+  /* Inställningar för crawl-animationen */
+  --crawl-rotate: 20deg;
+  --crawl-scale-end: 0.3;
+  --crawl-translateY-end: -300%;    /* Öka för att få texten att röra sig längre upp */
+  --crawl-translateZ-end: -1500px;     /* Öka för att få en bättre 3D-effekt */
+}
+
+/* Global styling */
+body {
+  margin: 0;
+  padding: 0;
+  background: black;
+  color: white;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* Nedräkningstimer */
+#countdown {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'News Gothic Bold', sans-serif;
+  font-size: 2rem;
+  color: var(--countdown-color);
+  text-align: center;
+  z-index: 1000;
+}
+
+/* Startknapp */
+#start-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'subset-StarJediRounded', sans-serif;
+  font-size: 1.8em;
+  padding: 20px 40px;
+  background-color: var(--button-bg-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 1100;
+}
+
+/* Intro-text (blå) */
+#intro-text {
+  display: none;
+  position: absolute;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+  font-size: 2em;
+  color: var(--intro-text-color);
+  z-index: 900;
+  animation: fadeInOut var(--intro-duration) ease-in-out forwards;
+}
+#intro-text br {
+  display: block;
+  text-align: left;
+  margin-left: 25%;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Logotypen */
+#logo {
+  display: none; /* Visas via JS vid t=8 */
+  position: absolute;
+  top: 50%; /* Justera detta om du vill ha logotypen högre/lägre */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 950;
+  animation: logoZoom var(--logo-animation-duration) ease-in-out forwards;
+}
+@keyframes logoZoom {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 1;
+    /* Ändra translateY och scale här för att finjustera hur logotypen krymper och flyttas */
+    transform: translate(-50%, -50%) translateZ(-500px) scale(0.01);
+  }
+}
+
+/* Crawl-texten */
+@font-face {
+  font-family: 'News Gothic Bold';
+  src: url('fonts/NewsGothic-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+}
+#crawl-container {
+  display: none; /* Visas via JS vid t=19 */
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  perspective: 1500px;
+  z-index: 950;
+}
+.crawl {
+  position: absolute;
+  left: 50%;
+  bottom: -50%;
+  width: 100%;
+  transform: translateX(-50%);
+  font-family: 'News Gothic Bold', sans-serif;
+  font-size: 2.5rem;
+  color: var(--countdown-color);
+  text-align: center;
+  line-height: 2.5;
+  animation: crawlAnim var(--crawl-duration) linear forwards;
+}
+@keyframes crawlAnim {
+  0% {
+    transform: translateX(-50%) translateY(100%) rotateX(var(--crawl-rotate)) translateZ(0) scale(1);
+  }
+  100% {
+    transform: translateX(-50%) translateY(var(--crawl-translateY-end)) rotateX(25deg) translateZ(var(--crawl-translateZ-end)) scale(var(--crawl-scale-end));
+  }
+}
+
+/* Planetbilden */
+#planet-effect {
+  display: none;
+  position: fixed;
+  bottom: 0; /* Use bottom instead of top, e.g.: */
+  bottom: 0; /* or any value that fits your design */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  opacity: 0;
+  z-index: -2;
+  animation: planetSlideIn var(--planet-animation-duration) ease-out forwards;
+}
+
+@keyframes planetSlideIn {
+  0% {
+    transform: translateX(-50%) translateY(100%); /* Starts off-screen at the bottom */
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Final text och knappar */
+@font-face {
+  font-family: 'subset-StarJediRounded';
+  src: url('fonts/subset-StarJediRounded.woff2') format('woff2');
+}
+#main-title {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'subset-StarJediRounded', sans-serif;
+  font-size: 3rem;
+  color: var(--main-title-color);
+  z-index: 1050;
+  animation: fadeIn var(--final-fade-duration) ease-out forwards;
+}
+#buttons {
+  display: none;
+  opacity: 0;
+  transition: opacity var(--final-fade-duration) ease-in;
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 1050;
+}
+#buttons .btn {
+  font-family: 'subset-StarJediRounded', sans-serif;
+  font-size: 1.2em;
+  padding: 10px 20px;
+  margin: 5px;
+  background-color: var(--button-bg-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+}
+#buttons .btn:hover {
+  transform: scale(1.1);
+  background: white;
+  box-shadow: 0 0 10px rgba(255, 232, 31, 0.8);
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
