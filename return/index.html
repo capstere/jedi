@@ -1,59 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Return of the JESP</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <!-- Nedräkningstimer -->
-  <div id="countdown"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Return of the JESP</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Nedräkningstimer -->
+    <div id="countdown"></div>
 
-  <!-- Startknapp -->
-  <button id="start-button" aria-label="Starta Star Wars-introt">
-    MAY THE JESP BE WITH YOU
-  </button>
+    <!-- Startknapp -->
+    <button id="start-button" aria-label="Starta Star Wars-introt">
+      MAY THE JESP BE WITH YOU
+    </button>
 
-  <!-- Intro-text (blå) -->
-  <div id="intro-text">
-    A long time ago, in a Cepheid far,<br>far away...
-  </div>
-
-  <!-- Logotyp (använd h1 med id "logo" för en episk effekt) -->
-  <h1 id="logo">SPAR WARS</h1>
-
-  <!-- Crawl-texten – här använder vi en container som vi kallar "crawl-container" -->
-  <div id="crawl-container">
-    <div class="crawl">
-      <p class="center">EPISODE REV.J<br>RETURN OF THE JESP</p>
-      <p>It is a period of vendor war.</p>
-      <p>The Jedi Knight known only as JESP has been summoned back from self-imposed exile by the FIRST ORDER.</p>
-      <p>After vanishing without a trace, JESP was secretly captured by the sinister GURULAB.</p>
-      <p>The once-promising Jedi has now escaped and returned to his home planet of BROWSKIS.</p>
-      <p>There, alongside the fierce Jedi Knights VDAO and ELS, young JESP must once again board the Milliliter FALCON Tube, a vessel fully equipped for the mission ahead.</p>
-      <p>But JESP has no plan, no understanding of the objective, and confuses hyperspace with emotional growth.</p>
-      <p>Meanwhile, Senator TUKA, obsessed with locating JESP, has dispatched thousands of remote probes into the far reaches of space to uncover his ignorance.</p>
-      <p>Unaware of the trials to come, JESP must now UNLEARN all that he once tried to learn.</p>
-      <p>The fate of the galaxy may hang in the balance… but mostly, everyone just wants to know how he made it this far.</p>
+    <!-- Intro-text (blå) -->
+    <div id="intro-text">
+      A long time ago, in a Cepheid far,<br>far away...
     </div>
-  </div>
 
-  <!-- Planetbild -->
-  <img id="planet-effect" src="static/images/planet.png" alt="Planet" />
+    <!-- Krympande text: "SPAR WARS" -->
+    <h1 id="logo">SPAR WARS</h1>
 
-  <!-- Final text och knappar -->
-  <div id="main-title">RETURN OF THE JESP</div>
-  <div id="buttons">
-    <button class="btn" data-sound="fraga1.mp3">J</button>
-    <button class="btn" data-sound="fraga2.mp3">E</button>
-    <button class="btn" data-sound="fraga3.mp3">S</button>
-    <button class="btn" data-sound="do_it.mp3">P</button>
-  </div>
+    <!-- Crawl-texten (innehållet scrollar upp i 3D) -->
+    <div id="titles">
+      <div id="titlecontent">
+        <p class="center">EPISODE REV.J<br>RETURN OF THE JESP</p>
+        <p>It is a period of vendor war.</p>
+        <p>The Jedi Knight known only as JESP has been summoned back from self-imposed exile by the FIRST ORDER.</p>
+        <p>After vanishing without a trace, JESP was secretly captured by the sinister GURULAB.</p>
+        <p>The once-promising Jedi has now escaped and returned to his home planet of BROWSKIS.</p>
+        <p>There, alongside the fierce Jedi Knights VDAO and ELS, young JESP must once again board the Milliliter FALCON Tube, a vessel fully equipped for the mission ahead.</p>
+        <p>But JESP has no plan, no understanding of the objective, and confuses hyperspace with emotional growth.</p>
+        <p>Meanwhile, Senator TUKA, obsessed with locating JESP, has dispatched thousands of remote probes into the far reaches of space to uncover his ignorance.</p>
+        <p>Unaware of the trials to come, JESP must now UNLEARN all that he once tried to learn.</p>
+        <p>The fate of the galaxy may hang in the balance… but mostly, everyone just wants to know how he made it this far.</p>
+      </div>
+    </div>
 
-  <!-- Ljud: bgMusic startar vid klick och soundPlayer används för knappar -->
-  <audio id="bgMusic" src="static/sounds/starwars_theme.mp3" preload="auto" muted></audio>
-  <audio id="soundPlayer"></audio>
+    <!-- Planetbild -->
+    <img id="planet-effect" src="static/images/planet.png" alt="Planet" />
 
-  <script src="script.js"></script>
-</body>
+    <!-- Final text och knappar -->
+    <div id="main-title">RETURN OF THE JESP</div>
+    <div id="buttons">
+      <button class="btn" data-sound="fraga1.mp3">J</button>
+      <button class="btn" data-sound="fraga2.mp3">E</button>
+      <button class="btn" data-sound="fraga3.mp3">S</button>
+      <button class="btn" data-sound="do_it.mp3">P</button>
+    </div>
+
+    <!-- Ljud: bgMusic startas vid klick, soundPlayer används för knappar -->
+    <audio id="bgMusic" src="static/sounds/starwars_theme.mp3" preload="auto" muted></audio>
+    <audio id="soundPlayer"></audio>
+
+    <script src="script.js"></script>
+  </body>
 </html>
