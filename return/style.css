@@ -138,7 +138,7 @@ body {
 #planet-effect {
   display: none; /* Visas via JS */
   position: fixed;
-  top: 0;  /* Justera detta värde om du vill att planeten ska stanna högre – t.ex. top: 0; eller 20% */
+  top: -50%;  /* Justera detta värde om du vill att planeten ska stanna högre – t.ex. top: 0; eller 20% */
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
