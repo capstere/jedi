@@ -90,7 +90,7 @@ body {
 #logo {
   display: none;
   position: absolute;
-  top: 50%; /* Justera om du vill höja eller sänka texten */
+  top: 100%; /* Justera om du vill höja eller sänka texten */
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 950;
