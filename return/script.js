@@ -54,18 +54,18 @@ async function startIntro() {
   // 3. Vänta extra 2 s tills t=8 s (totalt 8 s från start)
   await sleep(CONFIG.delayAfterIntro);
 
-  // 4. Vid t=8 s: Visa logotypen. Obs: bgMusic startades redan vid klick.
+  // 4. Vid t=8 s: Visa h1 "SPAR WARS" (logotypen) – bgMusic startades redan vid klick
   const logo = document.getElementById("logo");
   logo.style.display = "block";
 
-  // 5. Vänta 8 s (t=8–16 s) medan logotypen visas
+  // 5. Vänta 8 s (t=8–16 s) medan "SPAR WARS" visas
   await sleep(8000);
 
-  // 6. Vid t=16 s: Visa crawl-texten
-  const crawlContainer = document.getElementById("crawl-container");
-  crawlContainer.style.display = "block";
+  // 6. Vid t=16 s: Visa crawl-texten (titelsektionen)
+  const titles = document.getElementById("titles");
+  titles.style.display = "block";
 
-  // 7. Vänta 4 s (t=16–20 s) och dölj logotypen (logotypen ska vara synlig mellan t=8 och t=20 s)
+  // 7. Vänta 4 s (t=16–20 s) och sedan döljs "SPAR WARS"
   await sleep(4000);
   logo.style.display = "none";
 
@@ -86,10 +86,10 @@ async function startIntro() {
 }
 
 /*******************************
- * Ljudfunktioner
+ * Ljudfunktioner – separata ljud uppspelningar
  *******************************/
 function playSound(file) {
-  // Skapa en ny Audio-instans för varje knapptryck för oberoende uppspelning
+  // Skapa en ny Audio-instans för varje knapptryck för att möjliggöra parallell uppspelning
   const buttonAudio = new Audio(`static/sounds/${file}`);
   buttonAudio.play().catch(error => {
     console.error("Sound playback error:", error);
@@ -100,16 +100,17 @@ function playSound(file) {
  * Event Listeners & Initiering
  *******************************/
 document.getElementById("start-button").addEventListener("click", async () => {
-  // Säkerställ att bgMusic inte är muted – avmuta den
+  // Säkerställ att bgMusic inte är muted: avmuta och ta bort muted-attributet
   const bgMusic = document.getElementById("bgMusic");
-  bgMusic.muted = false; 
+  bgMusic.muted = false;
   bgMusic.removeAttribute("muted");
   try {
-    await bgMusic.play();  // Starta bgMusic direkt vid klicket
+    await bgMusic.play(); // Starta bakgrundsmusiken direkt vid klick
   } catch (error) {
     console.error("Audio playback failed:", error);
   }
-  
+
+  // Starta nedräkning och introsekvens
   updateCountdown();
   startIntro();
 });
