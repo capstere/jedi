@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-visual-v2';
-import {Game,WEAPONS} from './fps/game.mjs';
+import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-features-v3';
+import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-features-v3';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
 
 const $=id=>document.getElementById(id);
