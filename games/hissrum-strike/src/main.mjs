@@ -443,7 +443,8 @@ try{
    window.__hissrumInspect=()=>({
      floorReferenceY:world.statistics.floorReferenceY,
      floorTriangles:world.statistics.floorTriangles,
-     modelBounds:{min:world.bounds.min.toArray(),max:world.bounds.max.toArray()},
+     modelBounds:{min:world.modelBounds.min.toArray(),max:world.modelBounds.max.toArray()},
+     roomBounds:{min:world.bounds.min.toArray(),max:world.bounds.max.toArray()},
      camera:{position:camera.position.toArray(),yaw:camera.rotation.y,pitch:camera.rotation.x},
      player:game?.player?{x:game.player.x,y:game.player.y,z:game.player.z,yaw:game.player.yaw,height:game.player.height}:null,
      anchor:world.anchors.analysts[0],
