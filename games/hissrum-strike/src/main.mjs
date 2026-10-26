@@ -334,7 +334,7 @@ function frame(now){
 
 window.addEventListener('keydown',e=>{
  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code))e.preventDefault();
- if(e.code==='Escape'){if(active&&!paused)pauseGame();else if(paused)resumeGame();return;}
+ if(e.code==='Escape'){if(active&&!paused)pauseGame();return;}
  if(!game||!active||paused||e.repeat)return;
  if(e.code==='KeyR')game.reload();
  if(e.code==='Digit1'||e.code==='Digit2'||e.code==='Digit3'||e.code==='Digit4')game.select(e.code.at(-1));
