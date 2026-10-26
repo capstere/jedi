@@ -23,17 +23,17 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--enable-unsafe-swiftshader']});
   const context=await browser.newContext({viewport:{width:1200,height:800},deviceScaleFactor:1});
   const page=await context.newPage();
-  page.on('pageerror',err=>failures.push(err.message));
+  page.on('pageerror',err=>{failures.push(err.message);console.error('[CHROME EXCEPTION] '+err.stack);});
   page.on('console',msg=>{
-   if(msg.type()==='error')log.push('console: '+msg.text());
+   console.log('[CHROME '+msg.type()+'] '+msg.text());if(msg.type()==='error')log.push('console: '+msg.text());
   });
-  page.on('requestfailed',req=>log.push('failed fetch '+req.url()+' '+(req.failure()?.errorText||'')));
+  page.on('requestfailed',req=>{const m='failed fetch '+req.url()+' '+(req.failure()?.errorText||'');log.push(m);console.error('[CHROME NET] '+m);});
   await page.goto(base+'games/hissrum-strike/',{waitUntil:'domcontentloaded',timeout:45000});
-  await page.waitForFunction(()=>{
+  console.log('[SMOKE] Waiting for live GLB scene startup (45s)...');\n  await page.waitForFunction(()=>{
    const ready=document.getElementById('start');
    const err=document.getElementById('loading');
    return !ready.disabled||err.classList.contains('failed');
-  },null,{timeout:160000});
+  },null,{timeout:45000});
   const isFailed=await page.locator('#loading').evaluate(node=>node.classList.contains('failed'));
   const message=await page.locator('#loading-text').textContent();
   assert.equal(isFailed,false,'model/scene init failed: '+message+'; logs: '+log.join('\n'));
@@ -57,4 +57,4 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   if(browser)await browser.close();
   server.kill('SIGTERM');
  }
-})().catch(err=>{console.error('BROWSER SMOKE FAILED: '+err.stack);process.exitCode=1;});
+})().catch(err=>{console.error('BROWSER SMOKE FAILED: '+err.stack);console.error('[SMOKE] Page errors: '+JSON.stringify(failures));console.error('[SMOKE] Network and console diagnostics: '+JSON.stringify(log));process.exitCode=1;});
