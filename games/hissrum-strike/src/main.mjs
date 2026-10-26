@@ -77,13 +77,23 @@ function poseCharacter(visual,actor,now){
  visual.userData.nextPoseTime=now+period;
  animateAuthored(visual.userData.avatar,actor,now);
 }
+function shouldRenderAvatar(actor,viewer){
+ if(!viewer||actor===viewer)return false;
+ const dx=actor.x-viewer.x,dz=actor.z-viewer.z,dist=Math.hypot(dx,dz);
+ if(dist<3)return true;
+ const yaw=viewer.yaw||0;
+ const forward=(-Math.sin(yaw)*dx-Math.cos(yaw)*dz)/dist;
+ // The authored skinned meshes disable per-mesh frustum culling for accurate
+ // animations. Cull the complete avatar when it's safely behind the camera.
+ return forward>-.36;
+}
 function syncCharacters(dt){
  if(!game)return;
  const cameraActor=spectateActor||game.player;
  for(const actor of game.actors){
    let visual=actors.get(actor.id);
    if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
-   visual.visible=actor.alive&&actor!==cameraActor;
+   visual.visible=actor.alive&&shouldRenderAvatar(actor,cameraActor);
    if(!visual.visible)continue;
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
@@ -95,7 +105,7 @@ function syncCharacters(dt){
  for(const hostage of game.hostages){
    let visual=hostages.get(hostage.id);
    if(!visual){visual=makeCharacter('hostage',hostage.id);hostages.set(hostage.id,visual);}
-   visual.visible=hostage.alive!==false&&!hostage.rescued;
+   visual.visible=hostage.alive!==false&&!hostage.rescued&&shouldRenderAvatar(hostage,cameraActor);
    if(!visual.visible)continue;
    visual.position.set(hostage.x,hostage.y||0,hostage.z);
    visual.rotation.y=hostage.yaw||0;
@@ -176,7 +186,11 @@ function setScope(value){
  aiming=!!value&&!!game?.player?.alive&&game.player.weapon==='sniper';
  $('scope-toggle').setAttribute('aria-pressed',String(aiming));
  $('scope-toggle').classList.toggle('active',aiming);
- if(!aiming){setHidden('scope-overlay',true);document.body.classList.remove('sniper-scoped');}
+ setHidden('scope-overlay',!aiming);
+ document.body.classList.toggle('sniper-scoped',aiming);
+ // Zoom must respond in the SAME input event, not depend on the next render
+ // frame: large GLB scenes and mobile GPUs can miss several animation ticks.
+ if(camera){camera.fov=aiming?19:(coarse?84:76);camera.updateProjectionMatrix();}
 }
 function clearScope(){
  setScope(false);
