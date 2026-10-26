@@ -50,6 +50,11 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   console.log('[DESKTOP_GEOMETRY] '+JSON.stringify(inspect));
   assert.equal(inspect.floorReferenceY,0,'source floor must be y=0, not at bottom of plinth');
   assert.ok(inspect.modelBounds.min[1]<0,'GLB plinth remains below original floor');
+  assert.ok(inspect.modelBounds.min[2]<inspect.roomBounds.min[2]-5,
+    'the playable map must ignore GLB assets located beyond the actual room footprint');
+  assert.ok(inspect.player.x>inspect.roomBounds.min[0]&&inspect.player.x<inspect.roomBounds.max[0]
+     &&inspect.player.z>inspect.roomBounds.min[2]&&inspect.player.z<inspect.roomBounds.max[2],
+    'player must spawn inside actual source floor');
   assert.ok(inspect.camera.position[1]>1.05 && inspect.camera.position[1]<2.3,
     'player camera must be above the real floor at miniature eye height');
   assert.ok(inspect.objects>=80,'all original model pieces should render');
@@ -93,6 +98,8 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   await phone.waitForTimeout(1200);
   const mobileInspect=await phone.evaluate(()=>window.__hissrumInspect?.());
   console.log('[MOBILE_GEOMETRY] '+JSON.stringify(mobileInspect));
+  assert.ok(mobileInspect.roomBounds.max[2]-mobileInspect.roomBounds.min[2]<80,
+    'mobile minimap should fit the physical room, not out-of-room decorations');
   assert.ok(mobileInspect.camera.position[1]>1.05&&mobileInspect.camera.position[1]<2.3,
     'mobile camera must stand above the real floor');
   const controls=await phone.evaluate(()=>({
