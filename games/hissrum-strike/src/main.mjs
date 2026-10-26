@@ -11,7 +11,7 @@ let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,to
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null;
 
-function progress(message){$('loading-text').textContent=message;}
+function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const asTime=n=>{const t=Math.max(0,Math.ceil(n));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');};
 function notice(value,seconds=2.3){$('notify').textContent=value;noticeUntil=performance.now()+seconds*1000;}
