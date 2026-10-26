@@ -227,3 +227,15 @@ body.sniper-scoped #crosshair{opacity:0}
   .touch-utilities{bottom:calc(241px + env(safe-area-inset-bottom));}
   #flight-status{top:calc(66px + env(safe-area-inset-top))}
 }
+
+/* Audio is user-controlled and unlocked only from an explicit Start/Resume tap.
+   No visual overlay may swallow the HUD mute switch on iPhone. */
+.sound-button{pointer-events:auto;flex-shrink:0;min-width:48px;height:48px;
+  border:1px solid rgba(135,237,216,.54);background:rgba(9,35,43,.82);
+  color:#baffef;border-radius:4px;cursor:pointer;
+  font:800 10px/1.1 Inter,system-ui,sans-serif;letter-spacing:.04em;padding:0 7px}
+.sound-button[aria-pressed="false"]{color:#a0adb2;border-color:#60727a}
+.sound-button:focus-visible{outline:2px solid #baffef;outline-offset:3px}
+@media (pointer:coarse) and (max-width:760px){
+  .sound-button{min-width:42px;width:42px;height:44px;font-size:9px;padding:0 3px}
+}

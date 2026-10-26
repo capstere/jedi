@@ -1,6 +1,7 @@
 import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
 import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
 import { BotController } from './bots.mjs';
+import {updateBotFlight} from './bot-flight.mjs';
 import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=hissrum-features-v3';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
@@ -140,6 +141,9 @@ export class Game {
         actor.reloadUntil = 0;
       }
       const controls = actor.bot ? actor.bot.update(dt) : actor.isPlayer ? input : {};
+      // Flight is an optional Hissrum tactical behavior. Preserve the existing
+      // Yuka bot controller for aiming, pathfinding and objective priorities.
+      if(actor.bot&&this.config.botFlight)updateBotFlight(this,actor,controls,dt);
       this.moveActor(actor, controls, dt);
       if (controls.fire) this.fire(actor, !actor.fireHeld);
       actor.fireHeld = !!controls.fire;
@@ -160,9 +164,9 @@ export class Game {
   moveActor(actor, input, dt) {
     if (Number.isFinite(input.yaw)) actor.yaw = input.yaw;
     if (Number.isFinite(input.pitch)) actor.pitch = clamp(input.pitch, -1.49, 1.49);
-    // Only the human player can activate free flight. Bot movement, bomb
-    // mechanics and pathfinding keep their original grounded physics.
-    const flying = !!actor.isPlayer && !!actor.flying;
+    // Humans and AI can fly when explicitly enabled. The same solid-GLB
+    // capsule movement applies to both; bots keep their Yuka floor route.
+    const flying = !!actor.flying&&(!!actor.isPlayer||!!actor.bot);
     const crouching = !flying && !!input.crouch;
     if (crouching) actor.height = this.config.crouchingHeight;
     else if (!this.world.canStand || this.world.canStand(actor, this.config.standingHeight)) actor.height = this.config.standingHeight;

@@ -81,3 +81,32 @@ Original-GLB har upphöjd tejp som tidigare kolliderade med spelarens kapsel och
 **Sniper rifle:** Välj `Scope 5` i startmenyn; det är samma originalvapen som i Cartridge Strike (5 skott, magasinfyllning 25 skott, 105 grundskada, lång räckvidd). Siktet ger ett 4× förstoringsläge, med `Z` eller hållen högermusknapp på dator respektive `SIKTE` på mobil. I zoomläge döljs vapnet till förmån för siktets riktmedel. `R`/`LADDA` laddar om som vanligt.
 
 Automatiska kontroller verifierar SHA- och animationsmetadata för originalmodellerna, klassificering av tejp, rörelse upp/ner/hover, Scope 5-data, och webbläsarens flyg-/sniper-/mobilfunktioner.
+
+## Ljud, blod, fantasidvärgar och flygande botar (uppdatering)
+
+Den här versionen återanvänder Cartridge Strikes egna effekt- och ljudsystem. Originalmodellen av Hissrum 12 och Layout Studio V5 är orörda.
+
+### Ljud och blod
+
+- Originalets `src/fps/audio.mjs` är infogat lokalt som `src/audio.mjs`. Ljudet är **positionsbaserat**: egna skott, botarnas skott, steg, metallträffar, omladdningar och explosioner hörs på olika avstånd. Ocklusion bakom rummets riktiga GLB-väggar dämpar ljud.
+- Femton original-Kenney CC0-filer ligger i `assets/audio/` som OGG med verifierade Git blob-SHA från Cartridge Strike på commit `477399f39e42b5938c497df0047dea7bb463ca13`. Fjorton korta ljud har dessutom lokala MP3-kopior för iPhone Safari; ambient industrial hum skapas i Web Audio direkt. Kodstigen faller tillbaka till syntetiserade effekter om en viss codec saknas.
+- Licens- och ursprungsinformation finns i `licenses/kenney-impact-sounds-CC0.txt` och `licenses/kenney-sci-fi-sounds-CC0.txt`. Ljudfilerna laddas från **jedi**, inte från en extern spelserver.
+- Web Audio startas endast vid en spelstart/återupptagning eller ett ljudknappstryck, så iOS-kravet på aktiv användargest följs. Ljud är **på som standard** och kan stängas av med `M` eller knappen **LJUD/TYST** i spelet.
+- Cartridge Strikes `CombatEffects` + instanserade FX-batcher ger korta blodpartiklar, verklighetsbaserade blodmärken på golv/vägg och projektilträffar/hylsor. Instanspoolerna är begränsade för att minimera lagg. I startmenyn kan du välja **På / Mindre / Av** för blod; mobil börjar med `Mindre`.
+
+### Åtta fantasidvärgar
+
+Originalsystemet `ActionVisuals` är portat från Cartridge Strike, inklusive de fem olikfärgade dvärgmallarna, deras kläder/skägg och gånganimationer. Som standard vandrar **åtta** självständiga fantasidvärgar på den sammanhängande, verkligt gångbara hissrumsgolvet. De har kollision mot originalmodellens hinder och kan träffas om `wanderers` är aktiverat. Ett val i startmenyn stänger av eller slår på dem.
+
+### Botarnas flygning
+
+Samtliga AI-botar kan **välja att flyga** i omgångar. Under en flightplan styr deras befintliga Yuka/Cartridge Strike-AI horisontell navigation och sikte, medan `src/fps/bot-flight.mjs` styr höjd. Botsvaret kontrolleras mot samma GLB-capsule-kollisioner som spelaren; inga teleporteringar eller borttagna väggar används. Högst fyra botar flyger samtidigt för att bibehålla mobilprestanda.
+
+- Botar lyfter utspritt i tid, stiger till en begränsad nivå, kan fortsätta skjuta och sväva under strid, och flyger ned till en verifierad gångbar nod för landning.
+- De lämnar ett diskret luftspår, får en ring på minimapen medan de flyger och genererar enkla start-/landningsljud.
+- Uppdrag som bombplantering/desarmering och eskort prioriterar landning. Flygning kan stängas av separat i startmenyn.
+- Spelarens egna tangenter är oförändrade: `F` / `FLYG`, `Space` / `UPP` och `Ctrl` / `NER`.
+
+### Test
+
+`node --test games/hissrum-strike/tests/*.test.mjs` kontrollerar modellfiler, licensierade ljud och MP3-fallback, åtta separerade dvärgpositioner, botflygningens uppstigning/svävning/landning och samtliga tidigare kollisionsprov. Den utökade Chromiumtesten kör det verkliga spelet på dator och iPhone-viewport, bekräftar dekodade ljud, 3D-dvärgar, botflyg samt blodpartiklar och pauskontroller.
