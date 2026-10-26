@@ -7,8 +7,8 @@ const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065};
-let scene,renderer,camera,world,game,modelRoot,weaponRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
-let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchForward=0,touchStrafe=0;
+let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
+let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null;
 
@@ -133,14 +133,28 @@ function installRoomLighting(){
 }
 function initViewWeapon(){
  weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
- const g=new THREE.BoxGeometry(.18,.13,.63),body=new THREE.Mesh(g,mat('#263c46',.7));
- weaponRoot.add(body);
- part(weaponRoot,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
- part(weaponRoot,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
- part(weaponRoot,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
- part(weaponRoot,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
- part(weaponRoot,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
- muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.62);
+ weaponBase=new THREE.Group();weaponRoot.add(weaponBase);
+ part(weaponBase,new THREE.BoxGeometry(.18,.13,.63),mat('#263c46',.7),0,0,0);
+ part(weaponBase,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
+ part(weaponBase,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
+ part(weaponBase,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
+ part(weaponBase,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
+ part(weaponBase,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
+ // Scope 5: its own longer rifle silhouette, optics + engraved mount rather
+ // than merely renaming the generic SMG. Game combat and ammo stay authoritative.
+ sniperRoot=new THREE.Group();weaponRoot.add(sniperRoot);sniperRoot.visible=false;
+ const finish=mat('#253537',.8),barrel=mat('#182427',.87),mount=mat('#526c6d',.55),glass=mat('#719b9a',.35);
+ part(sniperRoot,new THREE.BoxGeometry(.19,.15,.88),finish,0,0,-.16);
+ part(sniperRoot,new THREE.BoxGeometry(.14,.16,.38),finish,.01,-.065,.35);
+ part(sniperRoot,new THREE.BoxGeometry(.095,.30,.14),finish,.025,-.20,.13);
+ part(sniperRoot,new THREE.CylinderGeometry(.035,.035,.62,12),barrel,0,.015,-.88).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.063,.052,.14,12),mount,0,.016,-1.17).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.BoxGeometry(.10,.10,.25),mount,0,.15,-.37);
+ part(sniperRoot,new THREE.CylinderGeometry(.083,.083,.41,14),barrel,0,.24,-.40).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.616).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.18).rotation.x=Math.PI/2;
+ muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),
+   new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.78);
  muzzle.visible=false;
 }
 function initTracers(){
