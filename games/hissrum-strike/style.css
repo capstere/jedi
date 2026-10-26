@@ -124,3 +124,63 @@ h1 span{display:block;color:var(--cyan)}
  .menu-foot{margin:8px 0}
 }
 @media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+
+/* V5 GLB visual-fix: preserve a clear portrait battlefield and usable taps. */
+.nearby-label{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  padding-top:8px;font:700 9px/1.3 Inter,sans-serif;letter-spacing:.035em;color:#d8efea}
+.map-card{border-color:rgba(142,207,210,.5);background:rgba(5,20,28,.78)}
+@media (pointer:coarse) and (max-width:760px){
+  .hud-top{display:grid;grid-template-columns:minmax(0,1fr) 82px minmax(0,1fr);
+    align-items:start;gap:4px;left:7px;right:7px;top:max(4px,env(safe-area-inset-top))}
+  .hud-score{min-width:0;gap:5px;padding:6px 5px;border-top-width:2px}
+  .hud-score strong{font-size:27px;min-width:27px;text-align:center}
+  .hud-score small{font-size:8px;letter-spacing:0;white-space:normal}
+  .hud-score small b{font-size:10px}
+  .team-dot{width:6px;height:6px}
+  .round-time{min-width:0;padding:4px 2px}
+  .round-time strong{font-size:27px}
+  .round-time span,.round-time small{font-size:8px}
+  .mission{top:calc(max(4px,env(safe-area-inset-top)) + 69px);
+    max-width:93vw;overflow:hidden;text-overflow:ellipsis;
+    font-size:9px;letter-spacing:.07em;padding:4px 8px;
+    background:rgba(4,19,26,.66);border-radius:3px}
+  .map-card{top:calc(max(4px,env(safe-area-inset-top)) + 105px);left:8px;
+    padding:6px;border-radius:5px;box-shadow:0 5px 15px rgba(0,0,0,.2)}
+  .map-title{font-size:9px}
+  .map-card canvas{width:101px;height:101px}
+  .nearby-label{max-width:101px;font-size:8px;padding-top:5px}
+  .kill-feed{top:calc(max(4px,env(safe-area-inset-top)) + 108px);
+    right:8px;max-width:46%;gap:3px}
+  .kill-feed div{font-size:9px;padding:4px 6px;background:rgba(4,18,26,.7)}
+  .kill-feed div:nth-child(n+4){display:none}
+  #notify{top:34%;font-size:16px;max-width:65%}
+  .hud-bottom{left:8px;right:8px;bottom:max(6px,env(safe-area-inset-bottom));gap:6px}
+  .hp-block,.weapon-block{min-width:87px;padding:5px 7px;background:rgba(4,18,26,.65)}
+  .hp-block strong,.weapon-block strong{font-size:31px}
+  .weapon-block strong small{font-size:14px}
+  .hp-block>span,.weapon-block>span{font-size:8px}
+  .hp-block small,.weapon-block>small{font-size:8px}
+  .pause-button{min-width:44px;width:44px;height:44px;font-size:18px;flex-shrink:0}
+  .move-pad{bottom:calc(155px + env(safe-area-inset-bottom));left:15px;width:98px;height:98px;
+    border-width:1px;background:rgba(12,38,46,.24)}
+  #move-stick{width:38px;height:38px;top:29px;left:29px}
+  /* Keep aiming ABOVE vital/ammo/pause HUD so the invisible look zone cannot
+     steal their taps. Actions are at least 48 CSS px wide. */
+  #look-zone{top:23%;bottom:calc(149px + env(safe-area-inset-bottom));right:0;width:56%}
+  .touch-actions{bottom:calc(154px + env(safe-area-inset-bottom));right:10px;
+    grid-template-columns:repeat(2,48px);gap:7px}
+  .touch-actions button{width:48px;height:48px;font-size:11px;
+    background:rgba(12,38,47,.80)}
+  .touch-actions .fire-button{height:103px;border-radius:25px;font-size:14px;
+    background:rgba(178,245,219,.87)}
+  .spectating{bottom:calc(286px + env(safe-area-inset-bottom));font-size:14px}
+  .edge-vignette{box-shadow:inset 0 0 8vmax rgba(0,0,0,.11)}
+}
+@media (max-height:610px) and (pointer:coarse){
+  .move-pad{bottom:calc(76px + env(safe-area-inset-bottom));width:88px;height:88px}
+  #move-stick{top:25px;left:25px}
+  .touch-actions{bottom:calc(74px + env(safe-area-inset-bottom))}
+  #look-zone{bottom:calc(75px + env(safe-area-inset-bottom))}
+  .map-card canvas{width:75px;height:75px}
+  .nearby-label{max-width:75px}
+}
