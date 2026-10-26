@@ -13,7 +13,8 @@ function fixture(){
    nodes.push({x,z});
  const counts={line:0,path:0,occupancy:0};
  const world={
-  navigation:{nodes},
+  navigation:{nodes,nearest:pos=>nodes.reduce((best,n)=>
+    Math.hypot(n.x-pos.x,n.z-pos.z)<Math.hypot(best.x-pos.x,best.z-pos.z)?n:best,nodes[0])},
   inside:(x,z)=>Math.abs(x)<20&&Math.abs(z)<20,
   canOccupy:(x,z,r,h,y=0)=>{
    counts.occupancy++;return Math.abs(x)<19&&Math.abs(z)<19&&
@@ -114,7 +115,7 @@ test('tactical flight is a height-aware choice based on sightings, scout role an
  game.actors=[actor,next];game.state.time=15;
  updateBotFlight(game,next,{},1/60);
  assert.equal(next.flying,false,'injured cover bots must not takeoff');
- actor.airPatrol.until=14;game.state.time=15;
+ actor.y=.9;actor.airPatrol.until=14;game.state.time=15;
  updateBotFlight(game,actor,{},1/60);
  assert.equal(actor.airPatrol.mode,'landing');
 });
