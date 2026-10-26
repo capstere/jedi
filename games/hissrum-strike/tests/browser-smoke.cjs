@@ -58,4 +58,4 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   if(browser)await browser.close();
   server.kill('SIGTERM');
  }
-})().catch(err=>{console.error('BROWSER SMOKE FAILED: '+err.stack);console.error('[SMOKE] Page errors: '+JSON.stringify(failures));console.error('[SMOKE] Network and console diagnostics: '+JSON.stringify(log));process.exitCode=1;});
+})().catch(err=>{console.error('BROWSER SMOKE FAILED: '+err.stack);process.exitCode=1;});
