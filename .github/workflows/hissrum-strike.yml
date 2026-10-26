@@ -42,7 +42,7 @@ jobs:
           node-version: '22'
       - name: Install pinned Playwright browser runner
         run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
+          npm install --no-save --no-package-lock playwright@1.56.1 pngjs@7.0.0
           npx playwright install --with-deps chromium
       - name: Load the real GLB and play a smoke round
         run: node games/hissrum-strike/tests/browser-smoke.cjs
@@ -50,5 +50,7 @@ jobs:
         if: always()
         with:
           name: hissrum-strike-browser
-          path: hissrum-strike-browser.png
+          path: |
+            hissrum-strike-browser.png
+            hissrum-strike-mobile.png
           if-no-files-found: ignore
