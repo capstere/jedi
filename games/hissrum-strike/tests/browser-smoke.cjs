@@ -75,6 +75,10 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
   assert.equal(diag.dwarfCount,8,'eight original fantasy dwarfs must spawn inside Hissrum V5');
   assert.equal(diag.botFlightEnabled,true,'AI vertical navigation must be on by default');
+  assert.equal(diag.tacticalAIEnabled,true,'bots should use real-room tactical planning');
+  assert.ok(diag.tacticalBots.length>=9,'every opponent and teammate bot should own a tactical controller');
+  assert.ok(diag.tacticalBots.every(b=>Number.isFinite(b.goal?.x)||
+    b.goal===null),'tactical bot goals must remain finite or be intentionally held');
   assert.ok(diag.visibleDwarfs>=8,'Cartridge Strike dwarf meshes must actually be instanced');
   assert.ok(diag.tapeCollidersExcluded>=1,'adhesive floor tape should remain visible but never enter Octree collision');
   assert.ok((await page.locator('#weapon').textContent()).includes('Scope 5'),'sniper selected in Game');
@@ -154,7 +158,13 @@ async function launchReadyPage(context,tag,issues){
   await page.waitForFunction(()=>window.__hissrumDiagnostics()?.flyingBots>0,null,{timeout:85000});
   assert.ok((await page.evaluate(()=>window.__hissrumDiagnostics())).flyingBots>=1,
     'bots must fly physically inside the 3D world, not only have a UI setting');
-  console.log('PASS: Autonomous bot flight visible during real 5v5 simulation');
+  const tactics=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(tactics.tacticalAIEnabled,true);
+  assert.ok(tactics.tacticalBots.some(b=>b.aiState),'bots should choose mission or combat AI states');
+  assert.ok(tactics.tacticalBots.filter(b=>b.flying).length<=2,
+    'only two tactical flying bots at once on mobile-safe AI');
+  console.log('TACTICAL AI GLB LIVE',JSON.stringify(tactics.tacticalBots.slice(0,8)));
+  console.log('PASS: Autonomous tactical bot flight and role-based goals visible during real 5v5 simulation');
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
@@ -173,6 +183,8 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(mobileDiag.authoredVisuals>=10);
   assert.equal(mobileDiag.dwarfCount,8,'mobile game must initialize all dwarfs');
   assert.equal(mobileDiag.botFlightEnabled,true);
+  assert.equal(mobileDiag.tacticalAIEnabled,true);
+  assert.ok(mobileDiag.tacticalBots.length>=9);
   assert.ok(['reduced','standard'].includes(mobileDiag.bloodSetting));
   await mobile.locator('#sound-button').tap();
   assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,
