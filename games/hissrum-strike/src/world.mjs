@@ -10,6 +10,7 @@ import {GLTFLoader} from '../vendor/three/addons/loaders/GLTFLoader.js';
 import {Octree} from '../vendor/three/addons/math/Octree.js';
 import {Capsule} from '../vendor/three/addons/math/Capsule.js';
 import {createNavigation,selectAnchors} from './navigation.mjs?v=hissrum-visual-v2';
+import {isDecorativeFloorMarking} from './collision-surfaces.mjs';
 
 export const ROOM_MODEL='Hissrum12_V5_med_39_objekt.glb';
 export const MINIATURE_SCALE=6;
@@ -107,13 +108,32 @@ export async function createHissrumWorld(progress=()=>{}){
   bounds.max.x=Math.min(bounds.max.x,floor.limits.maxX);
   bounds.min.z=Math.max(bounds.min.z,floor.limits.minZ);
   bounds.max.z=Math.min(bounds.max.z,floor.limits.maxZ);
+  // Octree.fromGraphNode(model) included raised adhesive floor tape as 3D
+  // collision triangles, causing the frustrating "invisible walls" at tape
+  // boundaries. Build a COLLISION-ONLY view of the authentic model. Every
+  // original mesh remains visible and unchanged in the actual render scene.
+  const solids=new THREE.Group();
+  model.updateWorldMatrix(true,true);
+  let nonSolidTapeMeshes=0,solidMeshCount=0;
+  model.traverse(object=>{
+    if(!object.isMesh||!object.geometry)return;
+    if(isDecorativeFloorMarking(object)){nonSolidTapeMeshes++;return;}
+    const collisionMesh=new THREE.Mesh(object.geometry);
+    collisionMesh.matrixAutoUpdate=false;
+    collisionMesh.matrix.copy(object.matrixWorld);
+    solids.add(collisionMesh);
+    solidMeshCount++;
+  });
+  if(nonSolidTapeMeshes===0)throw Error('No floor tape identified; collision mapping must be reviewed');
   const octree=new Octree();
   octree.trianglesPerLeaf=28;
   octree.maxLevel=8;
-  octree.fromGraphNode(model);
+  octree.fromGraphNode(solids);
+  solids.clear();
   const landmarks=[];
   const landmarkName=/creform|pall|tvättvagn|sopkärl|plastlåda|torr-is|kvävetank|palltruck|kyl/i;
-  const stats={floorTriangles:floor.polygons,meshCount:0,model:ROOM_MODEL,
+  const stats={floorTriangles:floor.polygons,meshCount:0,solidMeshCount,
+    nonSolidTapeMeshes,model:ROOM_MODEL,
     scale:MINIATURE_SCALE,floorReference,roomExtent:{
       x:bounds.max.x-bounds.min.x,z:bounds.max.z-bounds.min.z}};
   model.traverse(o=>{

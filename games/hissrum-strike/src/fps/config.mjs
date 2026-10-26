@@ -28,6 +28,7 @@ export const CONFIG = Object.freeze({
   lossIncrement: 500, maxLossMoney: 3400, killMoney: 300, maxMoney: 16000,
   radius: .20, standingHeight: 1.70, crouchingHeight: 1.08,
   runSpeed: 4.2, sneakSpeed: 1.65, crouchSpeed: 1.35, botSpeed: 3.15,
+  flySpeed: 5.8,
   hostageSpeed: 2.9, gravity: 18, jumpSpeed: 5.4,
   interactDistance: 1.65, buyRadius: 5, smokeDuration: 16, smokeRadius: 3.4,
   grenadeFuse: 1.8, grenadeSpeed: 9, grenadeRadius: .10,

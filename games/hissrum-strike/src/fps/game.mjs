@@ -1,7 +1,7 @@
 import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
-import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs';
+import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
 import { BotController } from './bots.mjs';
-import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs';
+import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=hissrum-features-v3';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -88,7 +88,7 @@ export class Game {
       if (!actor.alive) { actor.inventory = this.startInventory(actor.team); actor.armor = 0; }
       const spawn = this.world.anchors[actor.team][actor.index];
       Object.assign(actor, { ...point(spawn), yaw: spawn.yaw ?? 0, pitch: 0, hp: this.config.health, alive: true,
-        height: this.config.standingHeight, vy: 0, onGround: true, crouching: false, reloadUntil: 0,
+        height: this.config.standingHeight, vy: 0, onGround: true, crouching: false, flying: false, reloadUntil: 0,
         nextShot: s.time, flashUntil: 0, flash: 0, flashStart: 0, action: null, moving: 0, distanceWalked: 0, recoil: 0,
         lastStep: s.time, fireHeld: false, interactHeld: false, jumpHeld: false, lastWeapon: 'knife', hurtTime: -Infinity, hurtDirection: null, deathAt: null, deathCause: null,
         weapon: actor.inventory.primary?.id ?? actor.inventory.pistol?.id ?? 'knife',
@@ -160,7 +160,10 @@ export class Game {
   moveActor(actor, input, dt) {
     if (Number.isFinite(input.yaw)) actor.yaw = input.yaw;
     if (Number.isFinite(input.pitch)) actor.pitch = clamp(input.pitch, -1.49, 1.49);
-    const crouching = !!input.crouch;
+    // Only the human player can activate free flight. Bot movement, bomb
+    // mechanics and pathfinding keep their original grounded physics.
+    const flying = !!actor.isPlayer && !!actor.flying;
+    const crouching = !flying && !!input.crouch;
     if (crouching) actor.height = this.config.crouchingHeight;
     else if (!this.world.canStand || this.world.canStand(actor, this.config.standingHeight)) actor.height = this.config.standingHeight;
     actor.crouching = actor.height < this.config.standingHeight;
@@ -168,10 +171,26 @@ export class Game {
     const magnitude = Math.hypot(forward, strafe);
     if (magnitude > 1) { forward /= magnitude; strafe /= magnitude; }
     const mode = actor.crouching ? 'crouch' : input.sneak ? 'sneak' : 'run';
-    const speed = actor.crouching ? this.config.crouchSpeed : input.sneak ? this.config.sneakSpeed : actor.bot ? this.config.botSpeed : this.config.runSpeed;
+    const speed = flying ? (this.config.flySpeed ?? 5.8) * (input.sneak ? .55 : 1)
+      : actor.crouching ? this.config.crouchSpeed : input.sneak ? this.config.sneakSpeed
+        : actor.bot ? this.config.botSpeed : this.config.runSpeed;
     let dx = (-Math.sin(actor.yaw) * forward + Math.cos(actor.yaw) * strafe) * speed * dt;
     let dz = (-Math.cos(actor.yaw) * forward - Math.sin(actor.yaw) * strafe) * speed * dt;
     if (input.moveWorld) { dx = input.moveWorld.x; dz = input.moveWorld.z; }
+    if (flying) {
+      // Space ascends; Ctrl descends. No gravity while hovering. The same
+      // world.move collision and room bounds still apply in all three axes:
+      // tape can be crossed but real shelves/walls/ceiling cannot.
+      actor.vy = 0;
+      actor.jumpHeld = !!input.jump;
+      const vertical = ((input.jump ? 1 : 0) - (input.crouch ? 1 : 0)) * speed * dt;
+      const before = point(actor);
+      const result = this.moveBody(actor, dx, vertical, dz);
+      actor.onGround = actor.y <= .001;
+      actor.moving = distance(actor, before) / dt;
+      actor.distanceWalked += distance(actor, before);
+      return result;
+    }
     if (input.jump && !actor.jumpHeld && actor.onGround && !actor.crouching) { actor.vy = this.config.jumpSpeed; actor.onGround = false; this.emit('jump', actor); }
     actor.jumpHeld = !!input.jump;
     actor.vy -= this.config.gravity * dt;

@@ -1,15 +1,16 @@
 import * as THREE from 'three';
-import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-visual-v2';
-import {Game,WEAPONS} from './fps/game.mjs';
+import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-features-v3';
+import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-features-v3';
+import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065};
-let scene,renderer,camera,world,game,modelRoot,weaponRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
-let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchForward=0,touchStrafe=0;
+let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
+let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
-let currentPhase='',currentWeapon='',spectateActor=null;
+let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
 
 function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -43,67 +44,73 @@ function setupGraphics(){
   });
 }
 
-const geometry={
-  body:new THREE.CapsuleGeometry(.21,.7,3,8),
-  head:new THREE.SphereGeometry(.235,10,7),
-  visor:new THREE.BoxGeometry(.28,.12,.10),
-  leg:new THREE.CapsuleGeometry(.10,.37,2,6),
-  rifle:new THREE.BoxGeometry(.11,.11,.55),
-  arm:new THREE.BoxGeometry(.13,.41,.17),
-  backpack:new THREE.BoxGeometry(.32,.4,.16)
-};
 const mat=(color,metalness=.15)=>new THREE.MeshStandardMaterial({color,roughness:.67,metalness});
-const teamMats={
- analysts:{suit:mat('#168d95'),highlight:mat('#a3fff0'),helmet:mat('#173e4b'),visor:mat('#80fded',.65)},
- counterAnalysts:{suit:mat('#a35832'),highlight:mat('#ffbb77'),helmet:mat('#442a2a'),visor:mat('#ed944a',.65)},
- hostage:{suit:mat('#717f9a'),highlight:mat('#f5e5bc'),helmet:mat('#c1ccd3'),visor:mat('#e8ded4')}
-};
 const darkMat=mat('#1a2931',.62);
 function part(group,geo,material,x,y,z){
  const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,y,z);group.add(mesh);return mesh;
 }
-function makeCharacter(team){
- const m=teamMats[team],root=new THREE.Group();
- part(root,geometry.body,m.suit,0,.96,0);
- part(root,geometry.head,m.helmet,0,1.53,-.01);
- part(root,geometry.visor,m.visor,0,1.55,-.23);
- part(root,geometry.backpack,m.highlight,0,.96,.21);
- part(root,geometry.leg,darkMat,-.12,.36,.01);
- part(root,geometry.leg,darkMat,.12,.36,.01);
- part(root,geometry.arm,m.suit,-.27,1.0,-.06);
- part(root,geometry.arm,m.suit,.27,1.0,-.06);
- if(team!=='hostage')part(root,geometry.rifle,darkMat,.10,1.07,-.35);
- scene.add(root);return root;
+/** EXACT authored Quaternius skins and real animation clips from Cartridge Strike.
+ *  Geometry, animations and textures are shared; skeleton and mixers are
+ *  unique per actor so bots can move independently in the 1:6 room.
+ */
+function makeCharacter(team,id){
+ if(!charactersReady())throw Error('Cartridge Strike character assets not ready');
+ const root=new THREE.Group();
+ const avatar=createAuthoredAvatar(team,id,team==='hostage');
+ root.userData.avatar=avatar;
+ root.userData.renderType='cartridge-strike-quaternius';
+ root.add(avatar.holder);
+ scene.add(root);
+ return root;
 }
 function clearCharacters(){
- for(const object of [...actors.values(),...hostages.values()])scene.remove(object);
+ for(const visual of [...actors.values(),...hostages.values()]){
+   scene.remove(visual);
+   if(visual.userData.avatar)disposeAvatar(visual.userData.avatar);
+ }
  actors.clear();hostages.clear();
+}
+function poseCharacter(visual,actor,now){
+ // Keep mobile GPU skinning smooth without evaluating 12 rigs at 60 FPS.
+ const period=coarse?1/24:1/45;
+ if(visual.userData.nextPoseTime!==undefined&&now<visual.userData.nextPoseTime)return;
+ visual.userData.nextPoseTime=now+period;
+ animateAuthored(visual.userData.avatar,actor,now);
+}
+function shouldRenderAvatar(actor,viewer){
+ if(!viewer||actor===viewer)return false;
+ const dx=actor.x-viewer.x,dz=actor.z-viewer.z,dist=Math.hypot(dx,dz);
+ if(dist<3)return true;
+ const yaw=viewer.yaw||0;
+ const forward=(-Math.sin(yaw)*dx-Math.cos(yaw)*dz)/dist;
+ // The authored skinned meshes disable per-mesh frustum culling for accurate
+ // animations. Cull the complete avatar when it's safely behind the camera.
+ return forward>-.36;
 }
 function syncCharacters(dt){
  if(!game)return;
  const cameraActor=spectateActor||game.player;
  for(const actor of game.actors){
    let visual=actors.get(actor.id);
-   if(!visual){visual=makeCharacter(actor.team);actors.set(actor.id,visual);}
-   visual.visible=actor.alive&&actor!==cameraActor;
+   if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
+   visual.visible=actor.alive&&shouldRenderAvatar(actor,cameraActor);
    if(!visual.visible)continue;
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
-   visual.scale.setScalar(actor.height/1.7);
-   const legs=visual.children[4],otherLeg=visual.children[5];
-   const gait=game.state.time*11+(actor.index||0);
-   const step=Math.min(.16,actor.moving*.03);
-   legs.rotation.x=Math.sin(gait)*step;
-   otherLeg.rotation.x=-Math.sin(gait)*step;
+   // Authored crouch and jump clips handle body pose; do not squash the mesh
+   // when Game changes its collision capsule height.
+   visual.scale.setScalar(1);
+   poseCharacter(visual,actor,game.state.time);
  }
  for(const hostage of game.hostages){
    let visual=hostages.get(hostage.id);
-   if(!visual){visual=makeCharacter('hostage');hostages.set(hostage.id,visual);}
-   visual.visible=hostage.alive!==false&&!hostage.rescued;
+   if(!visual){visual=makeCharacter('hostage',hostage.id);hostages.set(hostage.id,visual);}
+   visual.visible=hostage.alive!==false&&!hostage.rescued&&shouldRenderAvatar(hostage,cameraActor);
    if(!visual.visible)continue;
    visual.position.set(hostage.x,hostage.y||0,hostage.z);
    visual.rotation.y=hostage.yaw||0;
-   visual.scale.setScalar((hostage.height||1.6)/1.7);
+   visual.scale.setScalar(.95);
+   poseCharacter(visual,hostage,game.state.time);
  }
 }
 
@@ -136,14 +143,28 @@ function installRoomLighting(){
 }
 function initViewWeapon(){
  weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
- const g=new THREE.BoxGeometry(.18,.13,.63),body=new THREE.Mesh(g,mat('#263c46',.7));
- weaponRoot.add(body);
- part(weaponRoot,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
- part(weaponRoot,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
- part(weaponRoot,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
- part(weaponRoot,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
- part(weaponRoot,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
- muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.62);
+ weaponBase=new THREE.Group();weaponRoot.add(weaponBase);
+ part(weaponBase,new THREE.BoxGeometry(.18,.13,.63),mat('#263c46',.7),0,0,0);
+ part(weaponBase,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
+ part(weaponBase,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
+ part(weaponBase,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
+ part(weaponBase,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
+ part(weaponBase,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
+ // Scope 5: its own longer rifle silhouette, optics + engraved mount rather
+ // than merely renaming the generic SMG. Game combat and ammo stay authoritative.
+ sniperRoot=new THREE.Group();weaponRoot.add(sniperRoot);sniperRoot.visible=false;
+ const finish=mat('#253537',.8),barrel=mat('#182427',.87),mount=mat('#526c6d',.55),glass=mat('#719b9a',.35);
+ part(sniperRoot,new THREE.BoxGeometry(.19,.15,.88),finish,0,0,-.16);
+ part(sniperRoot,new THREE.BoxGeometry(.14,.16,.38),finish,.01,-.065,.35);
+ part(sniperRoot,new THREE.BoxGeometry(.095,.30,.14),finish,.025,-.20,.13);
+ part(sniperRoot,new THREE.CylinderGeometry(.035,.035,.62,12),barrel,0,.015,-.88).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.063,.052,.14,12),mount,0,.016,-1.17).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.BoxGeometry(.10,.10,.25),mount,0,.15,-.37);
+ part(sniperRoot,new THREE.CylinderGeometry(.083,.083,.41,14),barrel,0,.24,-.40).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.616).rotation.x=Math.PI/2;
+ part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.18).rotation.x=Math.PI/2;
+ muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),
+   new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.78);
  muzzle.visible=false;
 }
 function initTracers(){
@@ -161,6 +182,44 @@ function showTracer(event){
  p.needsUpdate=true;item.line.material.color.set(event.team==='analysts'?'#8ffaf1':'#ffa26d');
  item.until=performance.now()+85;item.line.visible=true;
 }
+function setScope(value){
+ aiming=!!value&&!!game?.player?.alive&&game.player.weapon==='sniper';
+ $('scope-toggle').setAttribute('aria-pressed',String(aiming));
+ $('scope-toggle').classList.toggle('active',aiming);
+ setHidden('scope-overlay',!aiming);
+ document.body.classList.toggle('sniper-scoped',aiming);
+ // Zoom must respond in the SAME input event, not depend on the next render
+ // frame: large GLB scenes and mobile GPUs can miss several animation ticks.
+ if(camera){camera.fov=aiming?19:(coarse?84:76);camera.updateProjectionMatrix();}
+}
+function clearScope(){
+ setScope(false);
+ if(camera){camera.fov=coarse?84:76;camera.updateProjectionMatrix();}
+}
+function syncSpecialHUD(){
+ const p=game?.player;
+ const flying=!!p?.alive&&!!p.flying;
+ const sniper=!!p?.alive&&p.weapon==='sniper';
+ if(!sniper&&aiming)setScope(false);
+ $('flight-status').hidden=!flying;
+ $('flight-toggle').classList.toggle('active',flying);
+ $('flight-toggle').setAttribute('aria-pressed',String(flying));
+ $('flight-toggle').textContent=flying?'LANDA':'FLYG';
+ $('jump-button').textContent=flying?'UPP':'HOPPA';
+ $('descend-button').hidden=!flying;
+ $('scope-toggle').hidden=!sniper;
+ if(!flying)touchDescend=false;
+}
+function toggleFlight(){
+ if(!active||paused||!game?.player?.alive)return;
+ const p=game.player;
+ p.flying=!p.flying;
+ p.vy=0;
+ p.onGround=p.y<=.001;
+ touchJump=false;touchDescend=false;
+ syncSpecialHUD();
+ notice(p.flying?'FLYGLÄGE · UPP: SPACE / HOPPA · NER: CTRL / NER':'FLYGLÄGE AV',2.3);
+}
 function startGame(){
  if(!world)return;
  clearCharacters();
@@ -175,6 +234,7 @@ function startGame(){
  if(mode==='classic')game.buy(loadout);
  game.pause(false);
  lookYaw=game.player.yaw;lookPitch=.095;game.player.pitch=lookPitch;
+ clearScope();syncSpecialHUD();
  currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
  weaponRoot.visible=true;setHidden('menu',true);setHidden('pause',true);
@@ -189,7 +249,8 @@ function requestLock(){
 }
 function pauseGame(){
  if(!game||!active||paused)return;
- paused=true;game.pause(true);keys.clear();fire=false;touchFire=false;interact=false;
+ paused=true;game.pause(true);keys.clear();fire=false;touchFire=false;interact=false;touchDescend=false;
+ clearScope();
  setHidden('pause',false);setHidden('touch-controls',true);
  if(document.pointerLockElement===canvas)document.exitPointerLock();
 }
@@ -202,7 +263,8 @@ function resumeGame(){
 }
 function mainMenu(){
  active=false;paused=false;if(game)game.pause(true);
- game=null;clearCharacters();keys.clear();fire=false;touchFire=false;
+ clearScope();
+ game=null;clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
  setHidden('touch-controls',true);setHidden('menu',false);
  weaponRoot.visible=false;
@@ -239,14 +301,30 @@ function cameraFollow(dt){
  else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
  const bob=p.alive&&p.moving>.2&&!p.crouching?Math.sin(game.state.time*12)*Math.min(.032,p.moving*.008):0;
  camera.position.set(a.x,a.y+a.height-.13+bob,a.z);
- weaponRoot.visible=p.alive;
+ const scopeActive=p.alive&&p.weapon==='sniper'&&aiming;
+ const desiredFov=scopeActive?19:(coarse?84:76);
+ if(Math.abs(camera.fov-desiredFov)>.02){
+   camera.fov+=(desiredFov-camera.fov)*Math.min(1,dt*13);
+   camera.updateProjectionMatrix();
+ }
+ setHidden('scope-overlay',!scopeActive);
+ document.body.classList.toggle('sniper-scoped',scopeActive);
+ weaponBase.visible=p.weapon!=='sniper';
+ sniperRoot.visible=p.weapon==='sniper';
+ weaponRoot.visible=p.alive&&!scopeActive;
  gunKick=Math.max(0,gunKick-dt*.45);
  weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
  weaponRoot.position.set(coarse?.29:.30,coarse?-.41:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.86:-.52+gunKick);
  weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
  const w=WEAPONS[p.weapon];
  const s=coarse?.64:1;
- if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
+ if(p.weapon==='sniper'){
+   // Long-range rifle rests low/right, never masks the target or the CREFORM
+   // scenery. Scope mode temporarily hides the whole gun.
+   weaponRoot.position.set(coarse?.38:.49,coarse?-.46:-.40,coarse?-1.00:-.92);
+   weaponRoot.rotation.z=-.035;
+   weaponRoot.scale.setScalar(coarse?.44:.58);
+ }else if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
  else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
  else weaponRoot.scale.set(s,s,s);
  muzzle.visible=performance.now()<shotUntil;
@@ -257,7 +335,7 @@ function activeInput(){
   forward:clamp((keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0)+touchForward,-1,1),
   strafe:clamp((keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0)+touchStrafe,-1,1),
   sneak:keys.has('ShiftLeft')||keys.has('ShiftRight'),
-  crouch:keys.has('ControlLeft')||keys.has('ControlRight'),
+  crouch:keys.has('ControlLeft')||keys.has('ControlRight')||touchDescend,
   jump:keys.has('Space')||touchJump,
   fire:fire||touchFire,
   interact:keys.has('KeyE')||interact
@@ -339,7 +417,9 @@ function refreshHUD(now){
  $('weapon').textContent=weapon?.name||'INGET VAPEN';
  $('ammo').textContent=item?.ammo===Infinity?'∞':item?.ammo??'—';
  $('reserve').textContent=item?.reserve??'—';
- $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM': 'R · LADDA OM';
+ $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM':
+   p.weapon==='sniper'?'Z / SIKTE · R LADDA':'R · LADDA OM';
+ syncSpecialHUD();
  $('health').style.color=p.hp<30?'#ff9584':'#f5fcfc';
  if(world.landmarks.length){
    let nearest=null,best=Infinity;
@@ -396,22 +476,35 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyR')game.reload();
  if(e.code==='Digit1'||e.code==='Digit2'||e.code==='Digit3'||e.code==='Digit4')game.select(e.code.at(-1));
  if(e.code==='KeyQ')game.select('last');
+ if(e.code==='KeyF')toggleFlight();
+ if(e.code==='KeyZ')setScope(!aiming);
  if(e.code==='KeyB'&&game.config.mode==='classic'){const result=game.buy($('loadout').value);notice(result.ok?'VAPEN KÖPT':result.reason);}
  if(e.code==='KeyP')pauseGame();
  keys.add(e.code);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)pauseGame();});
-canvas.addEventListener('mousedown',e=>{if(e.button===0&&active&&!paused){fire=true;if(!coarse&&document.pointerLockElement!==canvas)requestLock();}});
-window.addEventListener('mouseup',()=>fire=false);
-window.addEventListener('blur',()=>{keys.clear();fire=false;touchFire=false;if(active)pauseGame();});
+canvas.addEventListener('mousedown',e=>{
+ if(!active||paused)return;
+ if(e.button===0)fire=true;
+ if(e.button===2)setScope(true);
+ if(!coarse&&document.pointerLockElement!==canvas)requestLock();
+});
+window.addEventListener('mouseup',e=>{if(e.button===0)fire=false;if(e.button===2)setScope(false);});
+window.addEventListener('blur',()=>{keys.clear();fire=false;touchFire=false;touchDescend=false;if(active)pauseGame();});
 document.addEventListener('mousemove',e=>{
  if(!active||paused||document.pointerLockElement!==canvas)return;
- lookYaw-=e.movementX*settings.sensitivity;
- lookPitch=clamp(lookPitch-e.movementY*settings.sensitivity,-1.48,1.48);
+ // Acquiring Pointer Lock can synthesize a huge cursor-warp delta. Ignore
+ // that single start impulse so the player still faces the real CREFORM aisle.
+ if(performance.now()-pointerLockedAt<280 ||
+   Math.abs(e.movementX)>180 || Math.abs(e.movementY)>180)return;
+ const sense=settings.sensitivity*(aiming?.48:1);
+ lookYaw-=e.movementX*sense;
+ lookPitch=clamp(lookPitch-e.movementY*sense,-1.48,1.48);
 });
 document.addEventListener('pointerlockchange',()=>{
- if(active&&!paused&&!coarse&&document.pointerLockElement!==canvas)pauseGame();
+ if(document.pointerLockElement===canvas)pointerLockedAt=performance.now();
+ else if(active&&!paused&&!coarse)pauseGame();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -432,8 +525,9 @@ function setupTouch(){
  look.addEventListener('pointerdown',e=>{e.preventDefault();lookPointer=e.pointerId;lookX=e.clientX;lookY=e.clientY;look.setPointerCapture(lookPointer);});
  look.addEventListener('pointermove',e=>{
    if(e.pointerId!==lookPointer||!active||paused)return;
-   lookYaw-=(e.clientX-lookX)*settings.mobileSensitivity;
-   lookPitch=clamp(lookPitch-(e.clientY-lookY)*settings.mobileSensitivity,-1.48,1.48);
+   const sense=settings.mobileSensitivity*(aiming?.46:1);
+   lookYaw-=(e.clientX-lookX)*sense;
+   lookPitch=clamp(lookPitch-(e.clientY-lookY)*sense,-1.48,1.48);
    lookX=e.clientX;lookY=e.clientY;
  });
  const stopLook=e=>{if(e.pointerId===lookPointer)lookPointer=null;};
@@ -444,13 +538,17 @@ function setupTouch(){
      e.preventDefault();button.setPointerCapture(e.pointerId);
      if(action==='fire')touchFire=true;
      if(action==='jump')touchJump=true;
+     if(action==='descend')touchDescend=true;
      if(action==='interact')interact=true;
+     if(action==='fly')toggleFlight();
+     if(action==='scope')setScope(!aiming);
      if(action==='reload')game?.reload();
      if(action==='switch')game?.select('last');
    });
    const reset=()=>{
      if(action==='fire')touchFire=false;
      if(action==='jump')touchJump=false;
+     if(action==='descend')touchDescend=false;
      if(action==='interact')interact=false;
    };
    button.addEventListener('pointerup',reset);button.addEventListener('pointercancel',reset);
@@ -467,7 +565,10 @@ setupTouch();
 setupGraphics();
 requestAnimationFrame(frame);
 try{
- world=await createHissrumWorld(progress);
+ // Load the copied CC0 Cartridge Strike GLBs before allowing any match.
+ progress('Laddar Cartridge Strike-karaktärer och animationsriggar…');
+ const [room]=await Promise.all([createHissrumWorld(progress),loadCharacterLibrary()]);
+ world=room;
  modelRoot=world.model;scene.add(modelRoot);
  installRoomLighting();
  mapBackdrop=paintMapBackground();
@@ -480,7 +581,11 @@ try{
      anchors:world.anchors,
      namedProps:world.landmarks.map(o=>({name:o.name,x:o.x,y:o.y,z:o.z,
        ndc:new THREE.Vector3(o.x,o.y,o.z).project(camera).toArray()})),
-     stats:world.statistics
+     stats:world.statistics,
+     characterModelReady:charactersReady(),
+     authoredVisuals:[...actors.values(),...hostages.values()].filter(v=>v.userData.renderType==='cartridge-strike-quaternius').length,
+     flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
+     fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes
    });
  }
  setHidden('loading',true);

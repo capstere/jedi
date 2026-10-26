@@ -184,3 +184,46 @@ h1 span{display:block;color:var(--cyan)}
   .map-card canvas{width:75px;height:75px}
   .nearby-label{max-width:75px}
 }
+
+/* Optional 3-D movement / sniper optics. Controls do not intercept the look
+   zone or the lower HUD; at least 44 CSS px per touch target. */
+#flight-status{position:absolute;left:50%;top:calc(106px + env(safe-area-inset-top));
+  transform:translateX(-50%);border:1px solid rgba(136,244,224,.7);
+  background:rgba(3,31,42,.74);border-radius:4px;color:#b9fff3;
+  padding:7px 11px;font:800 10px/1.2 Inter,sans-serif;letter-spacing:.07em;
+  white-space:nowrap;box-shadow:0 4px 16px #0003}
+#scope-overlay{position:fixed;inset:0;z-index:7;pointer-events:none;
+  background:radial-gradient(circle closest-side at 50% 50%,transparent 0 25vmin,
+    rgba(4,9,13,.94) 29vmin);display:grid;place-items:center}
+#scope-overlay .scope-reticle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(56vmin,400px);aspect-ratio:1;border:2px solid rgba(0,0,0,.72);
+  border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset}
+#scope-overlay .scope-reticle::before,#scope-overlay .scope-reticle::after{
+  content:"";position:absolute;left:50%;top:50%;background:rgba(4,16,18,.9);
+  transform:translate(-50%,-50%);box-shadow:0 0 2px #eaffec}
+#scope-overlay .scope-reticle::before{width:1px;height:100%}
+#scope-overlay .scope-reticle::after{width:100%;height:1px}
+#scope-overlay .scope-reticle span{position:absolute;left:50%;top:50%;
+  width:6px;height:6px;border:1px solid #f1fff0;border-radius:50%;
+  transform:translate(-50%,-50%);z-index:1}
+#scope-overlay small{position:absolute;left:50%;top:calc(50% + min(31vmin,214px));
+  transform:translateX(-50%);color:#e0f3e5;background:rgba(3,13,17,.7);
+  font:700 10px Inter,sans-serif;letter-spacing:.12em;padding:5px 9px}
+body.sniper-scoped #crosshair{opacity:0}
+.touch-utilities{position:absolute;right:10px;bottom:calc(319px + env(safe-area-inset-bottom));
+  display:flex;justify-content:flex-end;gap:7px;pointer-events:none}
+.touch-utilities button{pointer-events:auto;touch-action:none;width:49px;height:48px;
+  border:1px solid rgba(134,211,203,.67);border-radius:9px;
+  background:rgba(8,37,47,.85);color:#e5fff8;font:800 10px 'Barlow Condensed',sans-serif;
+  letter-spacing:.02em}
+.touch-utilities button.active{background:rgba(125,236,218,.92);color:#052733;
+  border-color:#a6fff0}
+.touch-utilities #scope-toggle{background:rgba(230,216,153,.86);color:#233027}
+@media (pointer:coarse) and (max-width:760px){
+  #flight-status{top:calc(93px + env(safe-area-inset-top));font-size:9px;padding:4px 7px}
+  .touch-utilities{bottom:calc(320px + env(safe-area-inset-bottom));}
+}
+@media (max-height:610px) and (pointer:coarse){
+  .touch-utilities{bottom:calc(241px + env(safe-area-inset-bottom));}
+  #flight-status{top:calc(66px + env(safe-area-inset-top))}
+}

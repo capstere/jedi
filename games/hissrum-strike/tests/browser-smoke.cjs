@@ -62,14 +62,19 @@ async function launchReadyPage(context,tag,issues){
   const issues=[];
   const desktop=await browser.newContext({viewport:{width:1200,height:800},deviceScaleFactor:1});
   const page=await launchReadyPage(desktop,'desktop',issues);
+  await page.locator('#loadout').selectOption('sniper');
   await page.locator('#start').click();
   await page.waitForSelector('#hud:not([hidden])');
-  await page.waitForTimeout(850);
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.authoredVisuals>=10,null,{timeout:90000});
   const diag=await page.evaluate(()=>window.__hissrumDiagnostics());
   console.log('DESKTOP ROOM DIAGNOSTICS '+JSON.stringify({scale:diag.scale,player:diag.player,room:diag.stats.roomExtent,
     modelFloor:diag.floorReference,spawn:diag.stats.playerSpawn,
     visibleProps:diag.namedProps.filter(p=>p.ndc[0]>-1&&p.ndc[0]<1&&p.ndc[1]>-1&&p.ndc[1]<1&&p.ndc[2]>0&&p.ndc[2]<1).slice(0,12)}));
   assert.ok(diag.namedProps.length>=10,'must load original furnishings, not a blank proxy scene');
+  assert.equal(diag.characterModelReady,true,'Cartridge Strike GLB avatars must load');
+  assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
+  assert.ok(diag.tapeCollidersExcluded>=1,'adhesive floor tape should remain visible but never enter Octree collision');
+  assert.ok((await page.locator('#weapon').textContent()).includes('Scope 5'),'sniper selected in Game');
   assert.ok(diag.namedProps.some(p=>/CREFORM-vagn/i.test(p.name)),
     'named landmarks must use human-readable original cart names, not only V4 primitive IDs');
   const lead=diag.anchors.analysts[0],fx=-Math.sin(lead.yaw),fz=-Math.cos(lead.yaw);
@@ -80,6 +85,8 @@ async function launchReadyPage(context,tag,issues){
   }
   assert.ok(Math.abs(diag.floorReference)<.12,'floor reference cannot be bottom of room substructure');
   assert.ok(diag.player&&Math.abs(diag.player.y)<.3,'player must stand ON real floor, not under it');
+  assert.ok(Math.abs(diag.player.yaw-diag.anchors.analysts[0].yaw)<.16,
+    'pointer-lock acquisition must not swing camera away from the intended GLB landmarks');
   assert.ok(diag.player.eye>1.1&&diag.player.eye<3.5,'first-person camera must be above floor');
   assert.ok(diag.stats.roomExtent.z<55,'elevator cabin must not expand the playable arena');
   assert.ok(diag.namedProps.some(p=>p.ndc.every(Number.isFinite)&&Math.abs(p.ndc[0])<.9&&Math.abs(p.ndc[1])<.9&&p.ndc[2]>0&&p.ndc[2]<1),
@@ -89,6 +96,42 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(desktopMetrics.mean>25,'original-room gameplay is implausibly dark');
   assert.ok(desktopMetrics.std>11,'view lacks readable geometry/contrast');
   assert.ok(Number(await page.locator('#health').textContent())>=0);
+  await page.keyboard.press('KeyZ');
+  await page.waitForTimeout(550);
+  let scoped=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(scoped.scopeActive,true,'Z opens the sniper scope');
+  assert.ok(scoped.fov<65,'sniper should actually zoom camera');
+  assert.equal(await page.locator('#scope-overlay').isVisible(),true);
+  await page.screenshot({path:'hissrum-strike-sniper.png'});
+  await page.keyboard.press('KeyZ');
+  await page.waitForTimeout(100);
+  await page.keyboard.press('KeyF');
+  await page.waitForTimeout(110);
+  const origin=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(origin.flying,true,'F enables flight');
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(700);
+  await page.keyboard.up('Space');
+  const ascended=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.ok(ascended.player.y>origin.player.y+.07,'Space should ascend without jumping off tape');
+  await page.waitForTimeout(210);
+  const hovering=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.ok(Math.abs(hovering.player.y-ascended.player.y)<.04,'hover should preserve altitude');
+  await page.keyboard.down('Control');
+  // Software-WebGL has highly variable frame times. Hold the key until an
+  // ACTUAL downward physics step is observed, not for an arbitrary wall-clock
+  // delay that can elapse between rendered frames.
+  await page.waitForFunction(target=>
+    window.__hissrumDiagnostics()?.player?.y < target,
+    ascended.player.y-.045,{timeout:14000});
+  await page.keyboard.up('Control');
+  const descended=await page.evaluate(()=>window.__hissrumDiagnostics());
+  console.log('FLIGHT PHYSICS',{start:origin.player.y,up:ascended.player.y,
+    hovering:hovering.player.y,down:descended.player.y});
+  assert.ok(descended.player.y<ascended.player.y-.04,'Ctrl descends in flight');
+  await page.keyboard.press('KeyF');
+  assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).flying,false);
+  console.log('PASS: Cartridge avatars, decorative non-solid tape, sniper scope zoom and keyboard hover flight');
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
@@ -97,17 +140,32 @@ async function launchReadyPage(context,tag,issues){
   const phone=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,
     isMobile:true,hasTouch:true});
   const mobile=await launchReadyPage(phone,'mobile',issues);
+  await mobile.locator('#loadout').selectOption('sniper');
   await mobile.locator('#start').tap();
   await mobile.waitForSelector('#touch-controls:not([hidden])');
-  await mobile.waitForTimeout(900);
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics()?.authoredVisuals>=10,null,{timeout:90000});
   const mobileDiag=await mobile.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(Math.abs(mobileDiag.player.y)<.3,'mobile player must stand ON the real floor');
+  assert.equal(mobileDiag.characterModelReady,true);
+  assert.ok(mobileDiag.authoredVisuals>=10);
+  await mobile.locator('#flight-toggle').tap();
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().flying,null,{timeout:3000});
+  assert.equal(await mobile.locator('#descend-button').isVisible(),true,'mobile downward flight control must appear');
+  assert.equal(await mobile.locator('#jump-button').textContent(),'UPP','jump control becomes ascend');
+  assert.equal(await mobile.locator('#scope-toggle').isVisible(),true,'sniper scope button must appear');
+  await mobile.locator('#scope-toggle').tap();
+  await mobile.waitForTimeout(360);
+  const zoom=await mobile.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(zoom.scopeActive,true);
+  assert.ok(zoom.fov<76);
+  await mobile.locator('#scope-toggle').tap();
+  await mobile.waitForTimeout(120);
   const rects=await mobile.evaluate(()=>{
     const ids=['move-pad','pause-button','health','ammo','look-zone','minimap'];
     const r={};
     for(const id of ids){const e=document.getElementById(id);const b=e.getBoundingClientRect();
       r[id]={x:b.x,y:b.y,width:b.width,height:b.height};}
-    for(const value of ['fire','reload','jump','interact','switch']){
+    for(const value of ['fire','reload','jump','interact','switch','fly','descend','scope']){
       const b=document.querySelector('[data-touch='+value+']').getBoundingClientRect();
       r[value]={x:b.x,y:b.y,width:b.width,height:b.height};
     }
@@ -115,7 +173,7 @@ async function launchReadyPage(context,tag,issues){
     return {r,pauseClickTarget:target?.id||target?.dataset?.touch||target?.tagName};
   });
   console.log('MOBILE HIT TARGETS '+JSON.stringify(rects));
-  for(const id of ['fire','reload','jump','interact','switch']){
+  for(const id of ['fire','reload','jump','interact','switch','fly','descend','scope']){
    const b=rects.r[id];
    assert.ok(b.width>=44&&b.height>=44,'mobile '+id+' touch target is too small');
    assert.ok(!overlap(b,rects.r['ammo'])&&!overlap(b,rects.r['pause-button']),
@@ -128,6 +186,10 @@ async function launchReadyPage(context,tag,issues){
   const mobileMetrics=imageMetrics(phoneShot);console.log('MOBILE IMAGE METRICS '+JSON.stringify(mobileMetrics));
   assert.ok(mobileMetrics.mean>23,'phone gameplay still black/unrecognizable');
   assert.ok(mobileMetrics.std>10,'phone gameplay lacks visible geometry');
+  assert.equal(await mobile.locator('#flight-toggle').getAttribute('aria-pressed'),'true');
+  await mobile.locator('#flight-toggle').tap();
+  await mobile.waitForFunction(()=>!window.__hissrumDiagnostics().flying,null,{timeout:3000});
+  console.log('PASS: portrait touch flight/descend and Scope 5 optical zoom');
   await mobile.locator('#pause-button').tap();
   await mobile.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await mobile.locator('#resume').tap();
