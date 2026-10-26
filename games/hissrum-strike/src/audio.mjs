@@ -52,14 +52,23 @@ export class AudioSystem {
       limiter.attack.value = .003;
       limiter.release.value = .12;
       this.master.connect(limiter).connect(this.context.destination);
+      // iPhone Safari versions vary in support for Vorbis OGG. Include a
+      // lightweight MP3 copy for every imported CC0 sound; prefer a codec
+      // the browser advertises but also retry a decode failure automatically.
+      const audioElement=typeof document!=='undefined'?document.createElement('audio'):null;
+      const oggSupported=!!audioElement?.canPlayType?.('audio/ogg; codecs="vorbis"');
+      const extensions=oggSupported?['ogg','mp3']:['mp3','ogg'];
       this.loadPromise = Promise.all(AUDIO_SAMPLES.map(async name => {
-        try {
-          const response = await fetch(new URL(`../assets/audio/${name}.ogg`, import.meta.url));
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const buffer = await this.context.decodeAudioData(await response.arrayBuffer());
-          if (!this.disposed) this.buffers.set(name, buffer);
-        } catch (error) {
-          this.errors.push(`${name}: ${error.message}`);
+        for(const ext of extensions){
+          try {
+            const response = await fetch(new URL(`../assets/audio/${name}.${ext}`, import.meta.url));
+            if(!response.ok)throw new Error(`HTTP ${response.status}`);
+            const buffer = await this.context.decodeAudioData(await response.arrayBuffer());
+            if (!this.disposed) this.buffers.set(name, buffer);
+            return;
+          } catch(error){
+            if(ext===extensions.at(-1))this.errors.push(`${name}: ${error.message}`);
+          }
         }
       }));
     }
@@ -273,7 +282,10 @@ export class AudioSystem {
       case 'bounce': this.sample('impactMetal_light_000', sound, .28 * clamp(event.energy ?? 1, .2, 1), varied * 1.4); break;
       case 'smoke': this.noise(sound, 1.4, .25, 3400); this.sample('impactGeneric_light_000', sound, .18, .8); break;
       case 'flash': this.sample('laserSmall_000', sound, .22, 1.5, 0, .35); this.noise(sound, .13, .36, 5600); break;
+      case 'rocket-explosion':
       case 'he': this.sample('explosionCrunch_000', sound, .8, .9, 0, 1.8); this.sample('lowFrequency_explosion_000', sound, .65, 1, 0, 1.8); break;
+      case 'bot-takeoff': this.noise(sound,.28,.12,3400);this.tone(sound,510,.17,.08,'sine',720);break;
+      case 'bot-landed': this.sample('impactSoft_medium_000',sound,.24,1.15);break;
       case 'plant': this.sample('computerNoise_000', sound, .1, 1.3, 0, .5); this.tone(sound, 520, .08, .13); break;
       case 'beep': this.tone(sound, 1250, .09, .25); break;
       case 'defuse': this.sample('computerNoise_000', sound, .12, 1.6, 0, .5); this.tone(sound, 1600, .18, .16, 'sine', 420); break;
