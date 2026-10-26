@@ -115,11 +115,18 @@ export function selectAnchors(navigation,bounds,featureTarget=null){
   const nodes=navigation.nodes,center={x:(bounds.min.x+bounds.max.x)/2,z:(bounds.min.z+bounds.max.z)/2};
   const w=bounds.max.x-bounds.min.x,d=bounds.max.z-bounds.min.z;
   const focal=featureTarget||center;
-  function group(target,count,avoid=[]){
+  function group(target,count,avoid=[],clearPlayerSight=false){
     const ordered=[...nodes].sort((a,b)=>distance(a,target)-distance(b,target));
     const selected=[];
     for(const p of ordered){
       if([...selected,...avoid].some(q=>distance(p,q)<1.85))continue;
+      if(clearPlayerSight&&selected.length){
+        const lead=selected[0],fx=-Math.sin(lead.yaw),fz=-Math.cos(lead.yaw);
+        const distanceForward=(p.x-lead.x)*fx+(p.z-lead.z)*fz;
+        // Never line up a friendly character directly in front of the FPS
+        // camera at 1-2 meters; user's screenshot was obscured by their body.
+        if(distanceForward>-.65&&distance(p,lead)<10)continue;
+      }
       // Cartridge Strike looks toward (-sin(yaw), -cos(yaw)). The old
       // formula pointed exactly AWAY from the room center and at the wall.
       selected.push({x:p.x,z:p.z,y:0,
@@ -132,7 +139,7 @@ export function selectAnchors(navigation,bounds,featureTarget=null){
   // Opposite sides of the same connected real room; not invented exterior rooms.
   // Start by looking into the recognizable CREFORM and material aisle,
   // from the *south* side of the actual room, not near its freight elevator.
-  const a=group({x:center.x+w*.13,z:center.z+d*.22},5);
+  const a=group({x:center.x+w*.13,z:center.z+d*.22},5,[],true);
   const b=group({x:center.x-w*.28,z:center.z-d*.22},5,a);
   const bomb=group({x:center.x+w*.19,z:center.z-d*.13},1,[...a,...b])[0];
   const hostages=group({x:center.x-w*.14,z:center.z+d*.09},2,[...a,...b,bomb]);
