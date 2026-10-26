@@ -1,0 +1,33 @@
+name: Produce Safari-compatible audio fallback
+on:
+  push:
+    branches: [feat/hissrum-audio-blood-dwarfs-flying-bots]
+    paths: ['.github/workflows/hissrum-transcode-audio.yml']
+permissions:
+  contents: write
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hissrum-audio-blood-dwarfs-flying-bots
+          persist-credentials: true
+      - name: Prepare mobile Safari MP3 fallback for CC0 OGG samples
+        run: |
+          set -euo pipefail
+          command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          for source in games/hissrum-strike/assets/audio/*.ogg; do
+            ffmpeg -hide_banner -loglevel error -nostdin -y -i "$source" \
+              -map_metadata -1 -ac 1 -codec:a libmp3lame -q:a 6 "${source%.ogg}.mp3"
+            test -s "${source%.ogg}.mp3"
+          done
+          test "$(find games/hissrum-strike/assets/audio -maxdepth 1 -name '*.mp3' | wc -l)" -eq 15
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add games/hissrum-strike/assets/audio/*.mp3
+          if ! git diff --staged --quiet; then
+            git commit -m "Provide AAC-free MP3 fallbacks for Kenney CC0 sounds on iPhone Safari"
+            git push origin HEAD:refs/heads/feat/hissrum-audio-blood-dwarfs-flying-bots
+          fi
