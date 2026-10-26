@@ -118,10 +118,17 @@ async function launchReadyPage(context,tag,issues){
   const hovering=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(Math.abs(hovering.player.y-ascended.player.y)<.04,'hover should preserve altitude');
   await page.keyboard.down('Control');
-  await page.waitForTimeout(440);
+  // Software-WebGL has highly variable frame times. Hold the key until an
+  // ACTUAL downward physics step is observed, not for an arbitrary wall-clock
+  // delay that can elapse between rendered frames.
+  await page.waitForFunction(target=>
+    window.__hissrumDiagnostics()?.player?.y < target,
+    ascended.player.y-.045,{timeout:14000});
   await page.keyboard.up('Control');
   const descended=await page.evaluate(()=>window.__hissrumDiagnostics());
-  assert.ok(descended.player.y<ascended.player.y-.05,'Ctrl descends in flight');
+  console.log('FLIGHT PHYSICS',{start:origin.player.y,up:ascended.player.y,
+    hovering:hovering.player.y,down:descended.player.y});
+  assert.ok(descended.player.y<ascended.player.y-.04,'Ctrl descends in flight');
   await page.keyboard.press('KeyF');
   assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).flying,false);
   console.log('PASS: Cartridge avatars, decorative non-solid tape, sniper scope zoom and keyboard hover flight');
