@@ -122,3 +122,14 @@ test('non-player bots use authoritative collision-based Game.moveActor flight br
  assert.ok(actor.z<3);
  assert.equal(actor.vy,0,'no gravity during bot flight');
 });
+
+test('bot death and respawn clear interrupted in-air landing patrol',()=>{
+ const {g,actor}=fixture();
+ actor.airPatrol={mode:'landing',goalY:0,until:3,nextAt:1};
+ actor.flying=false;
+ g.state.time=15;
+ updateBotFlight(g,actor,{},1/60);
+ assert.equal(actor.airPatrol.mode,'ground');
+ assert.equal(actor.flying,false);
+ assert.ok(actor.airPatrol.nextAt>15);
+});
