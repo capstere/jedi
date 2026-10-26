@@ -29,7 +29,8 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   });
   page.on('requestfailed',req=>{const m='failed fetch '+req.url()+' '+(req.failure()?.errorText||'');log.push(m);console.error('[CHROME NET] '+m);});
   await page.goto(base+'games/hissrum-strike/',{waitUntil:'domcontentloaded',timeout:45000});
-  console.log('[SMOKE] Waiting for live GLB scene startup (45s)...');\n  await page.waitForFunction(()=>{
+  console.log('[SMOKE] Waiting for live GLB scene startup (45s)...');
+  await page.waitForFunction(()=>{
    const ready=document.getElementById('start');
    const err=document.getElementById('loading');
    return !ready.disabled||err.classList.contains('failed');
