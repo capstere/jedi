@@ -104,9 +104,12 @@ export async function createHissrumWorld(progress=()=>{}){
     scale:MINIATURE_SCALE,floorReference,roomExtent:{
       x:bounds.max.x-bounds.min.x,z:bounds.max.z-bounds.min.z}};
   model.traverse(o=>{
-    if(!o.isMesh)return;
-    stats.meshCount++;
-    if(!landmarkName.test(o.name))return;
+    if(o.isMesh)stats.meshCount++;
+    // Use the ORIGINAL friendly GLB object/group names. A glTF mesh's
+    // generated V4_pallet/V4_creform... primitive name is not a useful
+    // map label and produces duplicate footprints for every material piece.
+    if(!o.name || /^V4_/i.test(o.name) || !landmarkName.test(o.name))return;
+    if(!o.isMesh&&!o.children.length)return;
     const box=new THREE.Box3().setFromObject(o);
     if(box.isEmpty())return;
     const center=box.getCenter(new THREE.Vector3());
