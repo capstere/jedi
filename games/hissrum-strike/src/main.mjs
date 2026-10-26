@@ -318,7 +318,13 @@ function cameraFollow(dt){
  weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
  const w=WEAPONS[p.weapon];
  const s=coarse?.64:1;
- if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
+ if(p.weapon==='sniper'){
+   // Long-range rifle rests low/right, never masks the target or the CREFORM
+   // scenery. Scope mode temporarily hides the whole gun.
+   weaponRoot.position.set(coarse?.38:.49,coarse?-.46:-.40,coarse?-1.00:-.92);
+   weaponRoot.rotation.z=-.035;
+   weaponRoot.scale.setScalar(coarse?.44:.58);
+ }else if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
  else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
  else weaponRoot.scale.set(s,s,s);
  muzzle.visible=performance.now()<shotUntil;
