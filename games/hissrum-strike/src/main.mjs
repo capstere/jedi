@@ -9,7 +9,7 @@ const settings={sensitivity:.0021,mobileSensitivity:.0065};
 let scene,renderer,camera,world,game,modelRoot,weaponRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
-let currentPhase='',currentWeapon='',spectateActor=null;
+let currentPhase='',currentWeapon='',spectateActor=null,lockGrace=0;
 
 function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -373,11 +373,16 @@ window.addEventListener('mouseup',()=>fire=false);
 window.addEventListener('blur',()=>{keys.clear();fire=false;touchFire=false;if(active)pauseGame();});
 document.addEventListener('mousemove',e=>{
  if(!active||paused||document.pointerLockElement!==canvas)return;
+ // Chromium can emit an enormous movement delta while recentering the cursor
+ // on pointer-lock acquisition. Never treat that warp as player aim input.
+ if(lockGrace>0){lockGrace--;return;}
+ if(Math.abs(e.movementX)>180||Math.abs(e.movementY)>180)return;
  lookYaw-=e.movementX*settings.sensitivity;
  lookPitch=clamp(lookPitch-e.movementY*settings.sensitivity,-1.48,1.48);
 });
 document.addEventListener('pointerlockchange',()=>{
- if(active&&!paused&&!coarse&&document.pointerLockElement!==canvas)pauseGame();
+ if(document.pointerLockElement===canvas){lockGrace=3;return;}
+ if(active&&!paused&&!coarse)pauseGame();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
