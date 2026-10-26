@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#081219">
+  <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
+  <title>Hissrum Strike | Miniature FPS</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+<canvas id="scene" aria-label="Spelvy från Hissrum 12"></canvas>
+<div id="loading" class="loading-screen" role="status">
+  <div class="spinner"></div><strong>HISSRUM STRIKE</strong>
+  <p id="loading-text">Läser in 3D-modellen…</p>
+</div>
+<div class="edge-vignette" aria-hidden="true"></div>
+
+<section id="menu" class="screen" aria-labelledby="game-title">
+  <div class="menu-content">
+    <div class="eyebrow">CARTRIDGE STRIKE / SPECIAL EDITION · 2026</div>
+    <div class="header-emblem">12<span>V5</span></div>
+    <h1 id="game-title">HISSRUM<span>STRIKE</span></h1>
+    <p class="subtitle">Du är 17 centimeter lång.<br>Hela slagfältet är Hissrum 12.</p>
+    <div class="chips"><span>1:10 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span></div>
+    <div class="menu-options">
+      <label>Spelläge
+        <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
+      </label>
+      <label>Svårighet
+        <select id="difficulty"><option value="casual">Casual</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
+      </label>
+      <label>Startvapen
+        <select id="loadout"><option value="smg">Vector C · SMG</option><option value="ar47">AR-47 · automatkarbin</option><option value="shotgun">Pump 8 · hagel</option><option value="sniper">Scope 5 · prickskytt</option></select>
+      </label>
+    </div>
+    <button id="start" class="primary" disabled>FÖRBEREDER MODELLEN…</button>
+    <p class="menu-foot">Samma stridsmotor som Cartridge Strike. Här finns inga genererade korridorer — endast din V5 GLB-modell.</p>
+    <div class="menu-links">
+      <a href="../../STARTA_HISSRUM_12_V5.html">Öppna originalstudion</a>
+      <a href="./README.md">Om spelet</a>
+    </div>
+    <details class="help"><summary>Styrning</summary>
+      <p><strong>Dator:</strong> WASD rörelse · mus sikta/skjut · R ladda · 1–3 vapen · Shift smyg · Ctrl huka · Mellanslag hoppa · E interagera · Esc pausa.</p>
+      <p><strong>Mobil:</strong> vänster styrplatta för rörelse, dra på höger sida för att sikta och använd knapparna för att skjuta, ladda, hoppa och interagera.</p>
+    </details>
+  </div>
+</section>
+
+<div id="hud" hidden>
+  <header class="hud-top">
+    <div class="hud-score"><span class="team-dot cyan"></span><strong id="score-a">0</strong><small>ANALYSTS <b id="alive-a">5</b></small></div>
+    <div class="round-time"><span id="phase">FÖRBEREDELSE</span><strong id="clock">0:00</strong><small id="round">RUNDA 1</small></div>
+    <div class="hud-score enemy"><small>COUNTER <b id="alive-b">5</b></small><strong id="score-b">0</strong><span class="team-dot amber"></span></div>
+  </header>
+  <aside class="map-card"><div class="map-title">HISSRUM 12 <span>1:10</span></div><canvas id="minimap" width="190" height="190" aria-label="Taktisk karta"></canvas><div class="map-legend"><span>● DITT LAG</span><span>● FIENDER</span></div></aside>
+  <div class="kill-feed" id="killfeed" aria-live="polite"></div>
+  <div class="mission" id="mission">TA KONTROLL ÖVER HISSRUMMET</div>
+  <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+  <div id="hit" aria-hidden="true">×</div>
+  <div id="damage" aria-hidden="true"></div>
+  <div id="notify" role="status"></div>
+  <div class="spectating" id="spectating" hidden>UTSLAGEN · <span id="spectate-name">INVÄNTAR RESPAWN</span></div>
+  <footer class="hud-bottom">
+    <div class="hp-block"><span>HÄLSA</span><strong id="health">100</strong><small id="armor">RUSTNING 0</small></div>
+    <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small></div>
+    <button class="pause-button" id="pause-button" aria-label="Pausa">Ⅱ</button>
+  </footer>
+</div>
+
+<section id="pause" class="screen screen-pause" hidden aria-labelledby="pause-title">
+  <div class="pause-card"><p class="eyebrow">HISSRUM STRIKE</p><h2 id="pause-title">PAUSAD</h2>
+    <p>Du är fortfarande bara 17 centimeter lång.</p>
+    <button id="resume" class="primary">FORTSÄTT SPELA</button>
+    <button id="restart" class="secondary">STARTA OM MATCH</button>
+    <button id="back-menu" class="secondary">TILL HUVUDMENYN</button>
+  </div>
+</section>
+<section id="match-end" class="screen screen-pause" hidden>
+  <div class="pause-card"><p class="eyebrow">MATCHEN ÄR AVGJORD</p><h2 id="winner">MATCH KLAR</h2>
+    <button id="play-again" class="primary">SPELA IGEN</button>
+    <button id="end-menu" class="secondary">HUVUDMENY</button>
+  </div>
+</section>
+
+<div id="touch-controls" hidden>
+  <div id="move-pad" class="move-pad"><div id="move-stick"></div></div>
+  <div id="look-zone" aria-label="Svep för att sikta"></div>
+  <div class="touch-actions">
+    <button data-touch="fire" class="fire-button">SKJUT</button>
+    <button data-touch="reload">LADDA</button>
+    <button data-touch="jump">HOPPA</button>
+    <button data-touch="interact">E</button>
+    <button data-touch="switch">VAPEN</button>
+  </div>
+</div>
+<script type="module" src="./src/main.mjs"></script>
+</body>
+</html>
