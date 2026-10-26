@@ -39,7 +39,7 @@ function makeFloorIndex(group){
       const yMin=Math.min(a.y,b.y,c.y),yMax=Math.max(a.y,b.y,c.y);
       // Only the genuine model floor; tabletops and suspended assets cannot
       // create fictional walkable islands below the player's feet.
-      if(yMin<-.14||yMax>.22||yMax-yMin>.15)continue;
+      if(yMin<-.30||yMax>.30||yMax-yMin>.28)continue;
       const area=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
       if(Math.abs(area)<.0005)continue;
       const p={ax:a.x,az:a.z,bx:b.x,bz:b.z,cx:c.x,cz:c.z,area};
