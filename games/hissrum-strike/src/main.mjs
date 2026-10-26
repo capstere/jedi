@@ -417,6 +417,12 @@ function drawMinimap(){
    dot(world.anchors.rescue,'#83ff8c',5);
  }
  for(const a of game.actors)if(a.alive&&!a.isPlayer)dot(a,a.team==='analysts'?'#77eee0':'#f89e63',3);
+ // Halo around actual airborne AI contacts, never a fabricated map position.
+ for(const a of game.actors)if(a.alive&&a.bot&&a.flying){
+   const [x,y]=xy(a);
+   ctx.beginPath();ctx.strokeStyle='#f7f4c0';ctx.lineWidth=1.3;
+   ctx.arc(x,y,5,0,Math.PI*2);ctx.stroke();
+ }
  if(game.config.wanderers)for(const d of game.state.wanderers||[])if(d.alive)dot(d,'#e9bc72',2);
  if(game.player.alive){
    const a=game.player,[x,y]=xy(a);
@@ -491,6 +497,17 @@ function frame(now){
  if(game&&active&&!paused){
    if(game.phase!=='match')game.update(dt,activeInput());
    updateEvents();syncCharacters(dt);cameraFollow(dt);
+   // Lightweight thrust puffs make autonomous bot takeoffs visibly obvious.
+   // Max four flyers, capped instanced puff pool, and throttled to 6Hz each.
+   if(actionVisuals)for(const bot of game.actors){
+     if(!bot.bot||!bot.alive||!bot.flying)continue;
+     if(game.state.time-(bot.lastFlyTrailAt??-Infinity)<.16)continue;
+     bot.lastFlyTrailAt=game.state.time;
+     actionVisuals.particle({x:bot.x,y:bot.y+.13,z:bot.z},game.state.time,{
+       size:.085,duration:.36,velocity:[0,-.35,0],
+       colour:bot.team==='analysts'?0x8ffff3:0xffba7b
+     });
+   }
    actionVisuals?.update(game,camera);
    bloodEffects?.update(game.state.time,dt,camera);
    if(now-lastHud>100){refreshHUD(now);lastHud=now;}
