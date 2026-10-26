@@ -10,7 +10,7 @@ const settings={sensitivity:.0021,mobileSensitivity:.0065};
 let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
-let currentPhase='',currentWeapon='',spectateActor=null;
+let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
 
 function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -474,12 +474,17 @@ window.addEventListener('mouseup',e=>{if(e.button===0)fire=false;if(e.button===2
 window.addEventListener('blur',()=>{keys.clear();fire=false;touchFire=false;touchDescend=false;if(active)pauseGame();});
 document.addEventListener('mousemove',e=>{
  if(!active||paused||document.pointerLockElement!==canvas)return;
+ // Acquiring Pointer Lock can synthesize a huge cursor-warp delta. Ignore
+ // that single start impulse so the player still faces the real CREFORM aisle.
+ if(performance.now()-pointerLockedAt<280 ||
+   Math.abs(e.movementX)>180 || Math.abs(e.movementY)>180)return;
  const sense=settings.sensitivity*(aiming?.48:1);
  lookYaw-=e.movementX*sense;
  lookPitch=clamp(lookPitch-e.movementY*sense,-1.48,1.48);
 });
 document.addEventListener('pointerlockchange',()=>{
- if(active&&!paused&&!coarse&&document.pointerLockElement!==canvas)pauseGame();
+ if(document.pointerLockElement===canvas)pointerLockedAt=performance.now();
+ else if(active&&!paused&&!coarse)pauseGame();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
