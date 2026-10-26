@@ -5,6 +5,7 @@ import { WEAPONS } from './config.mjs';
 import {actionObjective,friendlyLineClear} from './action-rules.mjs';
 import {angleDifference} from './riposte-fps-math.mjs';
 import { distanceSegment } from './physics.mjs';
+import {chooseTactic,latestSquadContact,planTacticalPosition} from './tactical-ai.mjs';
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const eye = a => ({ x: a.x, y: a.y + a.height - .12, z: a.z });
@@ -31,6 +32,7 @@ export class BotController {
     this.stuckTime = 0; this.replans = 0; this.lastPosition = position(actor); this.lastProgress = game.state.time; this.lastReplan = game.state.time;
     this.command = {}; this.distanceTravelled = 0;
     this.routePlan = null; this.routeStarted = false; this.lastContactReport = -Infinity;
+    this.tactical = null; this.nextTacticalPlan = 0; this.sharedContact = null;
     actor.aiRole = actor.team === 'analysts' ? ['site','south guard','north guard','hostage guard','PQC support'][actor.index] : ['bomb','rescue','rescue flank','support','flank'][actor.index];
     actor.aiLane = null;
   }
@@ -98,6 +100,7 @@ export class BotController {
     this.target = visible[0] ?? null;
     const remembered = this.records.filter(r => r.entity.alive).sort((a, b) => b.timeLastSensed - a.timeLastSensed);
     this.investigation = remembered[0] ?? null;
+    this.sharedContact = game.config.tacticalAI ? latestSquadContact(game,actor) : null;
   }
   update(dt) {
     const { game, actor } = this, now = game.state.time;
@@ -107,7 +110,8 @@ export class BotController {
       // Defusing and planting keep priority once in progress; fighting cannot
       // repeatedly reset the last second of a valid objective interaction.
       const readyToPlant = game.bomb.carrierId === actor.id && game.interaction(actor)?.type === 'plant';
-      const nextMode = actor.action || readyToPlant ? 'objective' : this.target ? 'combat' : this.investigation && !this.urgentObjective() ? 'investigate' : 'objective';
+      const nextMode = actor.action || readyToPlant ? 'objective' : this.target ? 'combat'
+        : (this.investigation || this.sharedContact) && !this.urgentObjective() ? 'investigate' : 'objective';
       if (nextMode !== this.mode) { this.mode = nextMode; this.machine.changeTo(nextMode); }
       this.command = {}; this.aimGoal = null; this.machine.update();
     }
@@ -129,6 +133,17 @@ export class BotController {
     // A cached visual record must not allow a shot after the target crosses a
     // wall/smoke between perception ticks. Recheck physical sight each shot.
     if (input.fire && this.target && !game.canSee(eye(actor), eye(this.target.entity))) input.fire = false;
+    if (input.fire && this.target?.visible && game.config.tacticalAI) {
+      // Stop spray-and-pray while sprinting across the room. Let the actual
+      // weapon/reaction/cooldown systems own each subsequent shot.
+      const target=this.target.lastSensedPosition;
+      const aimed=aimAt(actor,target),shotYaw=Number.isFinite(input.yaw)?input.yaw:actor.yaw,
+        shotPitch=Number.isFinite(input.pitch)?input.pitch:actor.pitch;
+      const tolerance=this.profile.id==='casual'?.24:this.profile.id==='hard'?.14:.19;
+      if (Math.abs(angleDelta(aimed.yaw,shotYaw))>tolerance
+        ||Math.abs(shotPitch-aimed.pitch)>tolerance*.9
+        ||(actor.moving>2.15&&distance(actor,target)>4))input.fire=false;
+    }
     if (input.fire && !this.canFireBurst()) input.fire = false;
     const travelled = distance(actor, this.lastPosition);
     this.distanceTravelled += travelled; this.lastPosition = position(actor);
@@ -163,6 +178,37 @@ export class BotController {
       this.burstUntil = 0;
       this.nextBurstAt = this.game.state.time + this.profile.pauseMin + this.game.random() * (this.profile.pauseMax - this.profile.pauseMin);
     }
+  }
+  /** Stable tactical position selection, at most one expensive floor search
+   * every few simulation seconds. The selected point remains collision-validated
+   * even when another bot temporarily obstructs the route.
+   */
+  tacticalPosition(contact,role){
+    const {game,actor}=this,now=game.state.time;
+    if(!game.config.tacticalAI || !contact || role==='objective')return false;
+    const old=this.tactical;
+    const targetMoved=old?.seen&&distance(old.seen,contact)>3.5;
+    if(old && old.kind===role && !targetMoved && old.until>now){
+      if(distance(actor,old.point)>.85)this.setGoal(old.point);
+      else this.setGoal(null); // Hold angle rather than pacing in place.
+      actor.aiState={cover:'tar skydd',flank:'flankerar',support:'täcker lagkamrat',
+        hold:'håller vinkel',investigate:'spanar från sidan'}[role];
+      return true;
+    }
+    if(now<this.nextTacticalPlan)return false;
+    this.nextTacticalPlan=now+1.1;
+    const result=planTacticalPosition(game,actor,contact,role);
+    if(!result)return false;
+    this.tactical={
+      kind:role,point:{x:result.x,z:result.z},
+      seen:{x:contact.x,z:contact.z},until:now+(role==='cover'?2.1:3.4)+actor.index*.13,
+      score:result.score
+    };
+    if(distance(actor,result)>1.0)this.setGoal(result);
+    else this.setGoal(null);
+    actor.aiState={cover:'tar skydd',flank:'flankerar',support:'täcker lagkamrat',
+      hold:'håller vinkel',investigate:'spanar från sidan'}[role];
+    return true;
   }
   urgentObjective() {
     const { game, actor } = this;
@@ -245,9 +291,17 @@ export class BotController {
     return center;
   }
   planInvestigation() {
-    this.actor.aiState = 'undersöker ljud';
-    this.setGoal(this.investigation.lastSensedPosition);
-    if (distance(this.actor, this.goal) < .5) { this.setGoal(null); this.command.yaw = this.actor.yaw + .7; }
+    const lastKnown=this.investigation?.lastSensedPosition ?? this.sharedContact;
+    if(!lastKnown){this.setGoal(null);return;}
+    this.actor.aiState = this.sharedContact&&!this.investigation?'undersöker lagets observation':'undersöker ljud';
+    if(!this.tacticalPosition(lastKnown,'investigate')){
+      this.setGoal(lastKnown);
+      if (this.goal&&distance(this.actor,this.goal)<.6) {
+        this.setGoal(null);this.command.yaw=this.actor.yaw+.55;
+      }
+    }
+    // Suspicion never grants a shot. Combat still requires a new actual sight.
+    this.command.fire=false;
   }
   planCombat() {
     const { game, actor, target } = this, now = game.state.time;
@@ -277,6 +331,17 @@ export class BotController {
     // doorway. Ordinary collision, movement inaccuracy and damage still apply.
     const flankGoal = this.routePlan?.gates[0] ?? (game.bomb.carrierId === actor.id && distance(actor,game.world.anchors.bomb)<4 ? game.world.anchors.bomb : null);
     if (actor.team === 'counterAnalysts' && [0,4].includes(actor.index) && flankGoal && actor.hp > 35 && d > 5) this.setGoal(flankGoal);
+    if(game.config.tacticalAI && !this.urgentObjective()){
+      const role=chooseTactic(actor,now);
+      this.tacticalPosition(point,role);
+      if(role==='cover' && this.tactical?.kind==='cover'){
+        // Don't keep unloading into open air while running for cover.
+        if(distance(actor,this.tactical.point)>.9)this.command.fire=false;
+        if(game.item(actor)?.ammo < (equipped.magazine||30)*.36
+          &&game.item(actor)?.reserve>0 && now-actor.lastStep>.22)
+          game.reload(actor);
+      }
+    }
     if (now > this.nextGrenade && d > 4 && d < 14 && now >= target.reactionAt && target.focusTime > .7) {
       const grenade = actor.inventory.he ? 'he' : actor.inventory.flash ? 'flash' : actor.inventory.smoke ? 'smoke' : null;
       if (grenade) {
