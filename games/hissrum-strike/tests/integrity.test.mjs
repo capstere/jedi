@@ -10,7 +10,7 @@ const glb=path.join(root,'Hissrum12_V5_med_39_objekt.glb');
 
 function allModules(folder){
  return readdirSync(folder,{withFileTypes:true}).flatMap(f=>f.isDirectory()?allModules(path.join(folder,f.name)):
- (/\\.(?:mjs|js)$/).test(f.name)?[path.join(folder,f.name)]:[]);
+ (/\.(?:mjs|js)$/).test(f.name)?[path.join(folder,f.name)]:[]);
 }
 test('original Hissrum V5 39-object GLB exists and has glTF 2 binary structure',()=>{
  assert.ok(existsSync(glb),'original model must not be duplicated or renamed');
