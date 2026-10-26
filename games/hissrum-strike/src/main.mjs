@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs';
+import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-visual-v2';
 import {Game,WEAPONS} from './fps/game.mjs';
 
 const $=id=>document.getElementById(id);
