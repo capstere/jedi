@@ -242,10 +242,10 @@ function cameraFollow(dt){
  weaponRoot.visible=p.alive;
  gunKick=Math.max(0,gunKick-dt*.45);
  weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
- weaponRoot.position.set(coarse?.21:.30,coarse?-.36:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.68:-.52+gunKick);
+ weaponRoot.position.set(coarse?.29:.30,coarse?-.41:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.86:-.52+gunKick);
  weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
  const w=WEAPONS[p.weapon];
- const s=coarse?.76:1;
+ const s=coarse?.64:1;
  if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
  else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
  else weaponRoot.scale.set(s,s,s);
