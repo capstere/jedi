@@ -14,7 +14,7 @@ function checkServer(){
   http.get(base,res=>{res.resume();resolve(res.statusCode<500);}).on('error',()=>resolve(false));
  });
 }
-async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;sleep(250);}throw Error('Local server did not start');}
+async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await sleep(250);}throw Error('Local server did not start');}
 (async()=>{
  const failures=[],log=[];
  let browser;
@@ -33,7 +33,7 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;sleep
    const ready=document.getElementById('start');
    const err=document.getElementById('loading');
    return !ready.disabled||err.classList.contains('failed');
-  },{timeout:160000});
+  },null,{timeout:160000});
   const isFailed=await page.locator('#loading').evaluate(node=>node.classList.contains('failed'));
   const message=await page.locator('#loading-text').textContent();
   assert.equal(isFailed,false,'model/scene init failed: '+message+'; logs: '+log.join('\n'));
@@ -48,7 +48,7 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;sleep
   await page.locator('#pause-button').click();
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
-  await page.waitForSelector('#pause[hidden]',{timeout:5000});
+  await page.waitForFunction(()=>document.querySelector('#pause').hidden,null,{timeout:5000});
   console.log('PASS: GLB initialization, start, HUD, renders, pause/resume, screenshot');
   console.log('Scene initialization status: '+message);
   if(log.length)console.log('Browser diagnostics:\n'+log.join('\n'));
