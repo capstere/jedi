@@ -25,7 +25,10 @@ function makeFloorIndex(group){
   const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
   group.updateWorldMatrix(true,true);
   group.traverse(object=>{
-    if(!object.isMesh || !object.geometry?.attributes?.position)return;
+    // Source GLB also contains a decorative structural plinth at y=-0.19 m.
+    // Only the authored floor mesh defines walkable floor; using the lowest
+    // triangle of the whole model spawns players UNDER the actual room floor.
+    if(!object.isMesh || !/^floor__floor(?:_|$)/.test(object.name) || !object.geometry?.attributes?.position)return;
     const g=object.geometry,pos=g.getAttribute('position'),idx=g.index;
     const count=idx?idx.count:pos.count;
     for(let i=0;i+2<count;i+=3){
@@ -73,12 +76,15 @@ export async function createHissrumWorld(progress=()=>{}){
   model.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(model);
   if(bounds.isEmpty())throw Error('GLB contained no geometry');
-  model.position.y-=bounds.min.y;
+  // The source floor is at y≈0 m, NOT at the minimum model bound.
+  // Base trim extends 19 cm below it; never normalize by bounds.min.y.
+  model.position.y=0;
   model.updateMatrixWorld(true);
   bounds.setFromObject(model);
+  if(bounds.min.y < -0.25 && bounds.min.y > -4) progress('Golv i originalkoordinater · sockel under golvnivå ignoreras');
   progress('Analyserar verkligt golv och kollisionsytor…');
   const floor=makeFloorIndex(model);
-  if(!floor.polygons)throw Error('Inga plana golvtrianglar hittades i GLB. Kontrollera 3D-exporten.');
+  if(!floor.polygons)throw Error('Saknar originalets floor__floor, start avbruten för att undvika spawn under golvet.');
   const octree=new Octree();
   octree.trianglesPerLeaf=28;
   octree.maxLevel=8;
@@ -176,9 +182,11 @@ export async function createHissrumWorld(progress=()=>{}){
   progress('Bygger säkra gångvägar mellan de verkliga objekten…');
   world.navigation=createNavigation(world,{spacing:1.45});
   world.findPath=world.navigation.findPath;
-  world.anchors=selectAnchors(world.navigation,bounds);
+  world.anchors=selectAnchors(world.navigation,bounds,world);
   stats.navigation=world.navigation.statistics;
   stats.spawns=10;
+  stats.floorReferenceY=0;
+  stats.floorMeshes=['floor__floor'];
   // Cache intentionally reserved for future occlusion work; no background worker.
   cache.clear();
   return world;
