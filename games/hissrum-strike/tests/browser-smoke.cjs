@@ -112,6 +112,10 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
     'touch controls must not obscure most of the phone screen');
   const mobileShot=await phone.screenshot({path:'hissrum-strike-mobile.png'});
   visibleRoomPixels(mobileShot,'mobile');
+  await phone.locator('#pause-button').tap({timeout:5000});
+  await phone.waitForSelector('#pause:not([hidden])',{timeout:5000});
+  await phone.locator('#resume').tap();
+  await phone.waitForFunction(()=>document.querySelector('#pause').hidden,null,{timeout:5000});
   if(process.env.VISUAL_DEBUG==='1')console.log('[MOBILE_JPEG_BASE64] '+(
     await phone.screenshot({type:'jpeg',quality:49,scale:'css'})
   ).toString('base64'));
