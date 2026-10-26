@@ -73,6 +73,9 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.namedProps.length>=10,'must load original furnishings, not a blank proxy scene');
   assert.equal(diag.characterModelReady,true,'Cartridge Strike GLB avatars must load');
   assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
+  assert.equal(diag.dwarfCount,8,'eight original fantasy dwarfs must spawn inside Hissrum V5');
+  assert.equal(diag.botFlightEnabled,true,'AI vertical navigation must be on by default');
+  assert.ok(diag.visibleDwarfs>=8,'Cartridge Strike dwarf meshes must actually be instanced');
   assert.ok(diag.tapeCollidersExcluded>=1,'adhesive floor tape should remain visible but never enter Octree collision');
   assert.ok((await page.locator('#weapon').textContent()).includes('Scope 5'),'sniper selected in Game');
   assert.ok(diag.namedProps.some(p=>/CREFORM-vagn/i.test(p.name)),
@@ -96,6 +99,22 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(desktopMetrics.mean>25,'original-room gameplay is implausibly dark');
   assert.ok(desktopMetrics.std>11,'view lacks readable geometry/contrast');
   assert.ok(Number(await page.locator('#health').textContent())>=0);
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.decodedSounds>=15,null,{timeout:60000});
+  let fx=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(fx.audioErrors.length,0,'authored CC0 sound samples should decode in Chromium');
+  assert.equal(fx.audioActive,true,'audio must unlock from the Start click');
+  assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.paintDamage()),true,
+    'original bounded blood impact pool must respond to actual damage event format');
+  assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.previewSound()),true,
+    'gunshot must reach the live positional audio engine');
+  fx=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.ok(fx.bloodHits>0,'blood FX statistics should update after damage');
+  await page.screenshot({path:'hissrum-strike-blood-dwarfs.png'});
+  await page.keyboard.press('KeyM');
+  assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,'M should mute');
+  await page.keyboard.press('KeyM');
+  assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,true,'M should unmute');
+  console.log('AUDIO/BLOOD/DWARFS OK',JSON.stringify(fx));
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(550);
   let scoped=await page.evaluate(()=>window.__hissrumDiagnostics());
@@ -132,6 +151,10 @@ async function launchReadyPage(context,tag,issues){
   await page.keyboard.press('KeyF');
   assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).flying,false);
   console.log('PASS: Cartridge avatars, decorative non-solid tape, sniper scope zoom and keyboard hover flight');
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.flyingBots>0,null,{timeout:85000});
+  assert.ok((await page.evaluate(()=>window.__hissrumDiagnostics())).flyingBots>=1,
+    'bots must fly physically inside the 3D world, not only have a UI setting');
+  console.log('PASS: Autonomous bot flight visible during real 5v5 simulation');
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
@@ -148,6 +171,14 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(Math.abs(mobileDiag.player.y)<.3,'mobile player must stand ON the real floor');
   assert.equal(mobileDiag.characterModelReady,true);
   assert.ok(mobileDiag.authoredVisuals>=10);
+  assert.equal(mobileDiag.dwarfCount,8,'mobile game must initialize all dwarfs');
+  assert.equal(mobileDiag.botFlightEnabled,true);
+  assert.ok(['reduced','standard'].includes(mobileDiag.bloodSetting));
+  await mobile.locator('#sound-button').tap();
+  assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,
+    'mobile mute target is tappable');
+  await mobile.locator('#sound-button').tap();
+  assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,true);
   await mobile.locator('#flight-toggle').tap();
   await mobile.waitForFunction(()=>window.__hissrumDiagnostics().flying,null,{timeout:3000});
   assert.equal(await mobile.locator('#descend-button').isVisible(),true,'mobile downward flight control must appear');
@@ -195,7 +226,7 @@ async function launchReadyPage(context,tag,issues){
   await mobile.locator('#resume').tap();
   await mobile.waitForFunction(()=>document.querySelector('#pause').hidden,null,{timeout:5000});
   assert.deepEqual(issues,[],'Unexpected browser errors/network failures');
-  console.log('PASS: real 39-object GLB, floor alignment, recognizable foreground, 5v5 match, portrait iPhone visibility, mobile HUD, pause/resume');
+  console.log('PASS: Real Hissrum V5 GLB, CC0 sound decoding, blood splashes, eight dwarfs, autonomous flying bots, iPhone volume and flight controls, pause/resume');
  }finally{
   if(browser)await browser.close();
   server.kill('SIGTERM');
