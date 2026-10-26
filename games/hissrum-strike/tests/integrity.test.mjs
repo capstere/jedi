@@ -10,7 +10,7 @@ const glb=path.join(root,'Hissrum12_V5_med_39_objekt.glb');
 
 function allModules(folder){
  return readdirSync(folder,{withFileTypes:true}).flatMap(f=>f.isDirectory()?allModules(path.join(folder,f.name)):
- f.name.endsWith('.mjs')?[path.join(folder,f.name)]:[]);
+ (/\\.(?:mjs|js)$/).test(f.name)?[path.join(folder,f.name)]:[]);
 }
 test('original Hissrum V5 39-object GLB exists and has glTF 2 binary structure',()=>{
  assert.ok(existsSync(glb),'original model must not be duplicated or renamed');
@@ -24,7 +24,7 @@ test('original Hissrum V5 39-object GLB exists and has glTF 2 binary structure',
  assert.ok(json.meshes?.length>0);
 });
 test('every relative ES module import resolves within the spin-off folder',()=>{
- const files=allModules(src);assert.ok(files.length>=10);
+ const files=[...allModules(src),...allModules(path.join(game,'vendor'))];assert.ok(files.length>=10);
  for(const file of files){
   const content=readFileSync(file,'utf8');
   for(const match of content.matchAll(/(?:from\\s*|import\\s*)['"]([^'"]+)['"]/g)){
