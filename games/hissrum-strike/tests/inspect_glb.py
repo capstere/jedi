@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
-"""Inspect the source GLB without external dependencies; never modify it."""
-import json,struct,collections,math
+"""Guard the original authored room floor against regression to plinth-zero spawns."""
+import json
+import struct
 from pathlib import Path
-p=Path(__file__).resolve().parents[3]/'Hissrum12_V5_med_39_objekt.glb'
-data=p.read_bytes()
-assert data[:4]==b'glTF' and struct.unpack_from('<I',data,4)[0]==2
-count,ctype=struct.unpack_from('<I4s',data,12)
-g=json.loads(data[20:20+count])
-print('GLB bytes',len(data),'nodes',len(g.get('nodes',[])),'meshes',len(g.get('meshes',[])),'materials',len(g.get('materials',[])),'accessors',len(g.get('accessors',[])))
-print('SCENES',json.dumps(g.get('scenes',[]),ensure_ascii=False)[:3500])
-for i,node in enumerate(g.get('nodes',[])):
- mesh=g['meshes'][node['mesh']] if 'mesh' in node else None
- prims=mesh.get('primitives',[]) if mesh else []
- bbox=[]
- for pr in prims:
-  ac=g['accessors'][pr['attributes']['POSITION']]
-  if 'min' in ac: bbox.append([ac['min'],ac['max']])
- print('NODE',i,str(node.get('name',''))[:65],'mesh',node.get('mesh'),'p',len(prims),'children',len(node.get('children',[])),
- 't',node.get('translation'),'r',node.get('rotation'),'s',node.get('scale'),'matrix',node.get('matrix'),'bounds',str(bbox)[:320])
-for i,mat in enumerate(g.get('materials',[])):
- print('MATERIAL',i,mat.get('name'),str(mat.get('pbrMetallicRoughness',{}))[:180],'doubleSided',mat.get('doubleSided'))
+
+model = Path(__file__).resolve().parents[3] / "Hissrum12_V5_med_39_objekt.glb"
+data = model.read_bytes()
+assert data[:4] == b"glTF" and struct.unpack_from("<I", data, 4)[0] == 2
+assert struct.unpack_from("<I", data, 8)[0] == len(data)
+length, chunk_type = struct.unpack_from("<I4s", data, 12)
+assert chunk_type == b"JSON"
+gltf = json.loads(data[20:20 + length])
+nodes = gltf["nodes"]
+meshes = gltf["meshes"]
+accessors = gltf["accessors"]
+
+def vertical_limits(name):
+    node = next(n for n in nodes if n.get("name") == name)
+    positions = [accessors[p["attributes"]["POSITION"]]
+                 for p in meshes[node["mesh"]]["primitives"]]
+    return min(a["min"][1] for a in positions), max(a["max"][1] for a in positions)
+
+floor_min, floor_max = vertical_limits("floor__floor")
+plinth_min, _ = vertical_limits("base__trim")
+assert -0.03 <= floor_min <= floor_max <= 0.03, "Original floor must remain at y=0 m"
+assert plinth_min < floor_min - 0.1, "Source plinth should extend below the floor"
+assert len(nodes) >= 100 and len(meshes) >= 90, "Original room and 39-object details missing"
+print(f"PASS: GLB {len(data)} bytes, {len(nodes)} nodes, {len(meshes)} meshes; "
+      f"floor y=({floor_min:.3f},{floor_max:.3f})m, "
+      f"plinth y={plinth_min:.3f}m — NEVER normalize camera to plinth.")
