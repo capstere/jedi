@@ -28,6 +28,8 @@ jobs:
         run: python3 games/hissrum-strike/tests/model-audit.py
       - name: Check module syntax
         run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Check test-runner source syntax before installing Chromium
+        run: node --check games/hissrum-strike/tests/browser-smoke.cjs
       - name: Run deterministic navigation and model tests
         run: node --test games/hissrum-strike/tests/*.test.mjs
 
@@ -54,4 +56,5 @@ jobs:
             hissrum-strike-browser.png
             hissrum-strike-mobile.png
             hissrum-strike-sniper.png
+            hissrum-strike-blood-dwarfs.png
           if-no-files-found: ignore
