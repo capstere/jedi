@@ -62,3 +62,22 @@ find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
 ```
 
 En Chromium-regression för både dator och telefon körs via GitHub Actions och verifierar golvhöjd, kamerariktning mot verkliga objekt, minimapsreferenser, bildkontrast, start och paus samt att touchknappar inte överlappar statusindikatorerna. Starta även i en riktig webbläsare och kontrollera minst: bild av de 39 objekten, mini-skala, skottträff, botars navigering runt vagnar och kartonger, respawn och att spelaren inte kan gå genom väggar eller lämna den exporterade golvytan. Testera desktop och mobil. Rekonstruerad 3D-geometri är endast spelmiljö och är inte underlag för verkliga säkerhets- eller flödesbeslut.
+
+## Cartridge Strike-karaktärer (nya)
+
+De enkla cylinderfigurerna har ersatts med de **verkliga, riggade Quaternius Operator-modellerna** från Cartridge Strike:
+
+- `assets/characters/quaternius-operator-male.glb` och `quaternius-operator-female.glb` är identiska originalfiler från `capstere/cartridge-strike` på commit `477399f39e42b5938c497df0047dea7bb463ca13`.
+- Git SHA för male: `483f795326c96f7649ea41f44ca802c9cc87b8a5`. Git SHA för female: `df940658096e08872fe2867994fc3ecafa6f8dbb`.
+- Licens: `licenses/quaternius-characters-CC0.txt`. Modellerna läses lokalt från `jedi`, **inte** över nätet från Cartridge Strike.
+- `src/characters/character-library.mjs` återanvänder Cartridge Strikes skelettkloning, avatarplagg och originalklipp för idle, gång, sprint, hopp, hukning och omladdning. Geometri delas, separata animation-mixers används för varje bot.
+
+## Golvtejp och flygläge (nya)
+
+Original-GLB har upphöjd tejp som tidigare kolliderade med spelarens kapsel och skapade osynliga kanter. `src/collision-surfaces.mjs` identifierar tejp från objekt-/materialnamn. Renderaren fortsätter visa alla tejpremsor, medan `src/world.mjs` bygger en separat Octree från **endast solida originalmesh**; kartong, vägg, skåp, vagnar och tak behåller sina kollisionsytor. Du kan nu gå rakt över tejpen utan att hoppa.
+
+**Flyg:** Tryck `F` på dator eller `FLYG` på mobil för att slå på/av fri 3D-svävning. WASD/joystick flyttar horisontellt, `Space`/`UPP` stiger och `Ctrl`/`NER` sjunker. Spelaren kan skjuta under flygning. Höjden hålls stilla när du släpper knapparna och normal gravitation återkommer vid avstängning. Flygande spelare är fortfarande begränsade av det riktiga rummets väggar och tak.
+
+**Sniper rifle:** Välj `Scope 5` i startmenyn; det är samma originalvapen som i Cartridge Strike (5 skott, magasinfyllning 25 skott, 105 grundskada, lång räckvidd). Siktet ger ett 4× förstoringsläge, med `Z` eller hållen högermusknapp på dator respektive `SIKTE` på mobil. I zoomläge döljs vapnet till förmån för siktets riktmedel. `R`/`LADDA` laddar om som vanligt.
+
+Automatiska kontroller verifierar SHA- och animationsmetadata för originalmodellerna, klassificering av tejp, rörelse upp/ner/hover, Scope 5-data, och webbläsarens flyg-/sniper-/mobilfunktioner.
