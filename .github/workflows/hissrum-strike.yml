@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Audit real GLB scene geometry and materials
+        run: python3 games/hissrum-strike/tests/model-audit.py
       - name: Check module syntax
         run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - name: Run deterministic navigation and model tests
