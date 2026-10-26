@@ -1,0 +1,27 @@
+name: Hissrum Strike verification
+on:
+  push:
+    branches: [main, feat/hissrum12-mini-strike]
+    paths:
+      - 'games/hissrum-strike/**'
+      - 'Hissrum12_V5_med_39_objekt.glb'
+      - '.github/workflows/hissrum-strike.yml'
+  pull_request:
+    paths:
+      - 'games/hissrum-strike/**'
+      - 'Hissrum12_V5_med_39_objekt.glb'
+      - '.github/workflows/hissrum-strike.yml'
+jobs:
+  integrity:
+    name: Syntax, model and navigation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check module syntax
+        run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Run deterministic navigation and model tests
+        run: node --test games/hissrum-strike/tests/*.test.mjs
