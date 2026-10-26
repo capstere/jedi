@@ -70,6 +70,14 @@ async function launchReadyPage(context,tag,issues){
     modelFloor:diag.floorReference,spawn:diag.stats.playerSpawn,
     visibleProps:diag.namedProps.filter(p=>p.ndc[0]>-1&&p.ndc[0]<1&&p.ndc[1]>-1&&p.ndc[1]<1&&p.ndc[2]>0&&p.ndc[2]<1).slice(0,12)}));
   assert.ok(diag.namedProps.length>=10,'must load original furnishings, not a blank proxy scene');
+  assert.ok(diag.namedProps.some(p=>/CREFORM-vagn/i.test(p.name)),
+    'named landmarks must use human-readable original cart names, not only V4 primitive IDs');
+  const lead=diag.anchors.analysts[0],fx=-Math.sin(lead.yaw),fz=-Math.cos(lead.yaw);
+  for(const ally of diag.anchors.analysts.slice(1)){
+    const dist=Math.hypot(ally.x-lead.x,ally.z-lead.z);
+    const inFront=(ally.x-lead.x)*fx+(ally.z-lead.z)*fz;
+    assert.ok(dist>=10||inFront<=-.65,'nearby teammate blocks player sightline to CREFORM');
+  }
   assert.ok(Math.abs(diag.floorReference)<.12,'floor reference cannot be bottom of room substructure');
   assert.ok(diag.player&&Math.abs(diag.player.y)<.3,'player must stand ON real floor, not under it');
   assert.ok(diag.player.eye>1.1&&diag.player.eye<3.5,'first-person camera must be above floor');
