@@ -100,21 +100,21 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(desktopMetrics.std>11,'view lacks readable geometry/contrast');
   assert.ok(Number(await page.locator('#health').textContent())>=0);
   await page.waitForFunction(()=>window.__hissrumDiagnostics()?.decodedSounds>=15,null,{timeout:60000});
-  let fx=await page.evaluate(()=>window.__hissrumDiagnostics());
-  assert.equal(fx.audioErrors.length,0,'authored CC0 sound samples should decode in Chromium');
-  assert.equal(fx.audioActive,true,'audio must unlock from the Start click');
+  let mediaStats=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(mediaStats.audioErrors.length,0,'authored CC0 sound samples should decode in Chromium');
+  assert.equal(mediaStats.audioActive,true,'audio must unlock from the Start click');
   assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.paintDamage()),true,
     'original bounded blood impact pool must respond to actual damage event format');
   assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.previewSound()),true,
     'gunshot must reach the live positional audio engine');
-  fx=await page.evaluate(()=>window.__hissrumDiagnostics());
-  assert.ok(fx.bloodHits>0,'blood FX statistics should update after damage');
+  mediaStats=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.ok(mediaStats.bloodHits>0,'blood FX statistics should update after damage');
   await page.screenshot({path:'hissrum-strike-blood-dwarfs.png'});
   await page.keyboard.press('KeyM');
   assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,'M should mute');
   await page.keyboard.press('KeyM');
   assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,true,'M should unmute');
-  console.log('AUDIO/BLOOD/DWARFS OK',JSON.stringify(fx));
+  console.log('AUDIO/BLOOD/DWARFS OK',JSON.stringify(mediaStats));
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(550);
   let scoped=await page.evaluate(()=>window.__hissrumDiagnostics());
