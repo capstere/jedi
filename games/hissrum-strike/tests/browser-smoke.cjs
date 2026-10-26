@@ -65,7 +65,7 @@ async function launchReadyPage(context,tag,issues){
   await page.locator('#loadout').selectOption('sniper');
   await page.locator('#start').click();
   await page.waitForSelector('#hud:not([hidden])');
-  await page.waitForTimeout(850);
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.authoredVisuals>=10,null,{timeout:90000});
   const diag=await page.evaluate(()=>window.__hissrumDiagnostics());
   console.log('DESKTOP ROOM DIAGNOSTICS '+JSON.stringify({scale:diag.scale,player:diag.player,room:diag.stats.roomExtent,
     modelFloor:diag.floorReference,spawn:diag.stats.playerSpawn,
@@ -136,7 +136,7 @@ async function launchReadyPage(context,tag,issues){
   await mobile.locator('#loadout').selectOption('sniper');
   await mobile.locator('#start').tap();
   await mobile.waitForSelector('#touch-controls:not([hidden])');
-  await mobile.waitForTimeout(900);
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics()?.authoredVisuals>=10,null,{timeout:90000});
   const mobileDiag=await mobile.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(Math.abs(mobileDiag.player.y)<.3,'mobile player must stand ON the real floor');
   assert.equal(mobileDiag.characterModelReady,true);
