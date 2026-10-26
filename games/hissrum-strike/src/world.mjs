@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from '../vendor/three/addons/loaders/GLTFLoader.js';
 import {Octree} from '../vendor/three/addons/math/Octree.js';
 import {Capsule} from '../vendor/three/addons/math/Capsule.js';
-import {createNavigation,selectAnchors} from './navigation.mjs';
+import {createNavigation,selectAnchors} from './navigation.mjs?v=20261026-floorfix';
 
 export const ROOM_MODEL='Hissrum12_V5_med_39_objekt.glb';
 export const MINIATURE_SCALE=10;
