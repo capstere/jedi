@@ -142,7 +142,7 @@ export function selectAnchors(navigation,bounds,world=null){
   }
   // Player begins inside the REAL room looking at the existing blue lift.
   // Do not reposition the GLB or create additional corridors.
-  const a=group({x:center.x+w*.12,z:center.z+d*.18},5,[],lift,true);
+  const a=group({x:center.x+w*.12,z:center.z+d*.07},5,[],lift,true);
   const b=group({x:center.x-w*.2,z:center.z-d*.25},5,a,a[0]);
   const bomb=group({x:center.x-w*.1,z:center.z+d*.12},1,[...a,...b])[0];
   const hostages=group({x:center.x+w*.05,z:center.z-d*.12},2,[...a,...b,bomb]);
