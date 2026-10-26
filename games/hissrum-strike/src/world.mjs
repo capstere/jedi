@@ -24,10 +24,13 @@ const floorKey=(x,z)=>Math.floor(x/4)+','+Math.floor(z/4);
 
 function makeFloorIndex(group){
   const floor=new Map();let polygons=0;
+  const limits={minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity};
   const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
   group.updateWorldMatrix(true,true);
   group.traverse(object=>{
-    if(!object.isMesh || !object.geometry?.attributes?.position)return;
+    // Only the V5-authored room floor. The freight lift, cartons and plinth
+    // must not generate playable islands or false horizontal surfaces.
+    if(!object.isMesh || !/^floor__floor(?:_|$)/.test(object.name) || !object.geometry?.attributes?.position)return;
     const g=object.geometry,pos=g.getAttribute('position'),idx=g.index;
     const count=idx?idx.count:pos.count;
     for(let i=0;i+2<count;i+=3){
@@ -37,10 +40,14 @@ function makeFloorIndex(group){
       const yMin=Math.min(a.y,b.y,c.y),yMax=Math.max(a.y,b.y,c.y);
       // Only the genuine model floor; tabletops and suspended assets cannot
       // create fictional walkable islands below the player's feet.
-      if(yMin<-.14||yMax>.22||yMax-yMin>.15)continue;
+      if(yMin<-.30||yMax>.30||yMax-yMin>.28)continue;
       const area=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
       if(Math.abs(area)<.0005)continue;
       const p={ax:a.x,az:a.z,bx:b.x,bz:b.z,cx:c.x,cz:c.z,area};
+      limits.minX=Math.min(limits.minX,a.x,b.x,c.x);
+      limits.maxX=Math.max(limits.maxX,a.x,b.x,c.x);
+      limits.minZ=Math.min(limits.minZ,a.z,b.z,c.z);
+      limits.maxZ=Math.max(limits.maxZ,a.z,b.z,c.z);
       const minX=Math.floor(Math.min(a.x,b.x,c.x)/4),maxX=Math.floor(Math.max(a.x,b.x,c.x)/4);
       const minZ=Math.floor(Math.min(a.z,b.z,c.z)/4),maxZ=Math.floor(Math.max(a.z,b.z,c.z)/4);
       for(let x=minX;x<=maxX;x++)for(let z=minZ;z<=maxZ;z++){
@@ -59,7 +66,7 @@ function makeFloorIndex(group){
     }
     return false;
   }
-  return {supports,polygons};
+  return {supports,polygons,limits};
 }
 
 export async function createHissrumWorld(progress=()=>{}){
@@ -93,7 +100,13 @@ export async function createHissrumWorld(progress=()=>{}){
     throw Error('Unexpected Hissrum 12 room bounds from base__trim');
   progress('Analyserar verkligt golv och kollisionsytor…');
   const floor=makeFloorIndex(model);
-  if(!floor.polygons)throw Error('Inga plana golvtrianglar hittades i GLB. Kontrollera 3D-exporten.');
+  if(!floor.polygons)throw Error('Originalets floor__floor saknas. Start avbruten så spelare aldrig placeras under golvet.');
+  // Intersect the physical room plinth with the ACTUAL authored floor. This
+  // excludes the lift and avoids imaginary invisible outside collisions.
+  bounds.min.x=Math.max(bounds.min.x,floor.limits.minX);
+  bounds.max.x=Math.min(bounds.max.x,floor.limits.maxX);
+  bounds.min.z=Math.max(bounds.min.z,floor.limits.minZ);
+  bounds.max.z=Math.min(bounds.max.z,floor.limits.maxZ);
   const octree=new Octree();
   octree.trianglesPerLeaf=28;
   octree.maxLevel=8;
