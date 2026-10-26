@@ -46,7 +46,8 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   assert.ok(Number(await page.locator('#health').textContent())>=0,'game health should render');
   assert.ok(await page.locator('#weapon').textContent(),'game weapon should render');
   await page.screenshot({path:'hissrum-strike-browser.png'});
-  await page.locator('#pause-button').click();
+  // FPS pointer lock redirects mouse clicks. Escape is the real desktop pause key.
+  await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
   await page.waitForFunction(()=>document.querySelector('#pause').hidden,null,{timeout:5000});
