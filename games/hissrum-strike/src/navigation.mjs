@@ -111,25 +111,31 @@ export function createNavigation(world,{spacing=1.45,maxNodes=8000}={}){
   return {nodes:active,grid,spacing,nearest,findPath,statistics:{sampled:nodes.length,connected:active.length,components}};
 }
 
-export function selectAnchors(navigation,bounds){
+export function selectAnchors(navigation,bounds,featureTarget=null){
   const nodes=navigation.nodes,center={x:(bounds.min.x+bounds.max.x)/2,z:(bounds.min.z+bounds.max.z)/2};
   const w=bounds.max.x-bounds.min.x,d=bounds.max.z-bounds.min.z;
+  const focal=featureTarget||center;
   function group(target,count,avoid=[]){
     const ordered=[...nodes].sort((a,b)=>distance(a,target)-distance(b,target));
     const selected=[];
     for(const p of ordered){
       if([...selected,...avoid].some(q=>distance(p,q)<1.85))continue;
-      selected.push({x:p.x,z:p.z,y:0,yaw:Math.atan2(center.x-p.x,center.z-p.z)});
+      // Cartridge Strike looks toward (-sin(yaw), -cos(yaw)). The old
+      // formula pointed exactly AWAY from the room center and at the wall.
+      selected.push({x:p.x,z:p.z,y:0,
+        yaw:Math.atan2(p.x-focal.x,p.z-focal.z)});
       if(selected.length>=count)break;
     }
     if(selected.length!==count)throw Error('Not enough separated spawn points');
     return selected;
   }
   // Opposite sides of the same connected real room; not invented exterior rooms.
-  const a=group({x:center.x-w*.30,z:center.z-d*.22},5);
-  const b=group({x:center.x+w*.30,z:center.z+d*.22},5,a);
-  const bomb=group({x:center.x-w*.10,z:center.z+d*.19},1,[...a,...b])[0];
-  const hostages=group({x:center.x+w*.05,z:center.z-d*.16},2,[...a,...b,bomb]);
+  // Start by looking into the recognizable CREFORM and material aisle,
+  // from the *south* side of the actual room, not near its freight elevator.
+  const a=group({x:center.x+w*.13,z:center.z+d*.22},5);
+  const b=group({x:center.x-w*.28,z:center.z-d*.22},5,a);
+  const bomb=group({x:center.x+w*.19,z:center.z-d*.13},1,[...a,...b])[0];
+  const hostages=group({x:center.x-w*.14,z:center.z+d*.09},2,[...a,...b,bomb]);
   const rescue={...a[0],radius:2.1};
   return {analysts:a,counterAnalysts:b,bomb:{...bomb,radius:1.7},hostages,rescue};
 }
