@@ -1,6 +1,9 @@
 import * as THREE from 'three';
-import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-features-v3';
-import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-features-v3';
+import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
+import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-effects-v4';
+import {AudioSystem} from './audio.mjs';
+import {CombatEffects} from './effects.mjs';
+import {ActionVisuals} from './action-visuals.mjs';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
 
 const $=id=>document.getElementById(id);
@@ -11,6 +14,7 @@ let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
+let audioSystem=null,bloodEffects=null,actionVisuals=null,soundEnabled=true;
 
 function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -220,13 +224,33 @@ function toggleFlight(){
  syncSpecialHUD();
  notice(p.flying?'FLYGLÄGE · UPP: SPACE / HOPPA · NER: CTRL / NER':'FLYGLÄGE AV',2.3);
 }
+function configureSound(value,unlock=true){
+ soundEnabled=!!value;
+ $('sound-button').textContent=soundEnabled?'LJUD':'TYST';
+ $('sound-button').setAttribute('aria-pressed',String(soundEnabled));
+ $('sound-button').setAttribute('aria-label',soundEnabled?'Stäng av ljud':'Slå på ljud');
+ audioSystem?.setVolume(soundEnabled?.55:0);
+ if(unlock&&soundEnabled&&audioSystem&&game&&active){
+   // Call synchronously from a real Start/Resume/mobile tap to unlock
+   // AudioContext on iOS (not after an awaited promise).
+   void audioSystem.unlock().catch(e=>console.warn('[Hissrum audio]',e));
+ }
+}
+function toggleSound(){configureSound(!soundEnabled);}
 function startGame(){
  if(!world)return;
  clearCharacters();
  const mode=$('mode').value,difficulty=$('difficulty').value,loadout=$('loadout').value;
+ bloodEffects?.clear();actionVisuals?.clear();audioSystem?.reset();
+ if(bloodEffects)bloodEffects.settings.blood=$('blood-mode').value;
+ configureSound($('audio-mode').value==='on',false);
+ if(soundEnabled)void audioSystem?.unlock().catch(e=>console.warn('[Hissrum audio]',e));
  game=new Game(world,{
    seed:42,team:'analysts',difficulty,
-   config:{mode,difficulty,loadout,firefight:false,wanderers:false,friendlyFire:false,
+   config:{mode,difficulty,loadout,firefight:false,
+     wanderers:$('dwarf-mode').value==='on',
+     botFlight:$('bot-flight-mode').value==='on',
+     friendlyFire:false,
      buyTime:2,startMoney:4900,roundTime:150,matchWins:5,
      respawnDelay:2.7,spawnProtection:1.4,botSpeed:3.2,runSpeed:4.6}
  });
@@ -249,7 +273,7 @@ function requestLock(){
 }
 function pauseGame(){
  if(!game||!active||paused)return;
- paused=true;game.pause(true);keys.clear();fire=false;touchFire=false;interact=false;touchDescend=false;
+ paused=true;game.pause(true);audioSystem?.reset();keys.clear();fire=false;touchFire=false;interact=false;touchDescend=false;
  clearScope();
  setHidden('pause',false);setHidden('touch-controls',true);
  if(document.pointerLockElement===canvas)document.exitPointerLock();
@@ -257,12 +281,14 @@ function pauseGame(){
 function resumeGame(){
  if(!game||!active)return;
  paused=false;game.pause(false);setHidden('pause',true);
+ if(soundEnabled)void audioSystem?.unlock().catch(e=>console.warn('[Hissrum audio]',e));
  setHidden('touch-controls',!coarse);
  lastFrame=performance.now();
  if(!coarse)requestLock();
 }
 function mainMenu(){
  active=false;paused=false;if(game)game.pause(true);
+ audioSystem?.reset();bloodEffects?.clear();actionVisuals?.clear();
  clearScope();
  game=null;clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
@@ -279,7 +305,16 @@ function addKill(event){
  feed.splice(5);
 }
 function updateEvents(){
- for(const event of game.drainEvents()){
+ const events=game.drainEvents();
+ actionVisuals?.events(events,game);
+ bloodEffects?.handle(events,game);
+ if(audioSystem){
+   const p=game.player;
+   // Positional sound is heard from the real miniature character's EYE,
+   // not its feet intersecting the room floor.
+   audioSystem.handle(events,p?{...p,y:p.y+p.height-.13}:null,game.state.time);
+ }
+ for(const event of events){
    if(event.type==='tracer'&&event.from&&event.to)showTracer(event);
    if(event.type==='kill')addKill(event);
    if(event.type==='combat-hit'&&event.actorId===game.player.id)hitUntil=performance.now()+170;
@@ -382,6 +417,7 @@ function drawMinimap(){
    dot(world.anchors.rescue,'#83ff8c',5);
  }
  for(const a of game.actors)if(a.alive&&!a.isPlayer)dot(a,a.team==='analysts'?'#77eee0':'#f89e63',3);
+ if(game.config.wanderers)for(const d of game.state.wanderers||[])if(d.alive)dot(d,'#e9bc72',2);
  if(game.player.alive){
    const a=game.player,[x,y]=xy(a);
    ctx.fillStyle='#fff';ctx.beginPath();
@@ -455,6 +491,8 @@ function frame(now){
  if(game&&active&&!paused){
    if(game.phase!=='match')game.update(dt,activeInput());
    updateEvents();syncCharacters(dt);cameraFollow(dt);
+   actionVisuals?.update(game,camera);
+   bloodEffects?.update(game.state.time,dt,camera);
    if(now-lastHud>100){refreshHUD(now);lastHud=now;}
  }else{
    if(world&&!game){
@@ -477,6 +515,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='Digit1'||e.code==='Digit2'||e.code==='Digit3'||e.code==='Digit4')game.select(e.code.at(-1));
  if(e.code==='KeyQ')game.select('last');
  if(e.code==='KeyF')toggleFlight();
+ if(e.code==='KeyM')toggleSound();
  if(e.code==='KeyZ')setScope(!aiming);
  if(e.code==='KeyB'&&game.config.mode==='classic'){const result=game.buy($('loadout').value);notice(result.ok?'VAPEN KÖPT':result.reason);}
  if(e.code==='KeyP')pauseGame();
@@ -555,6 +594,7 @@ function setupTouch(){
  }
 }
 $('start').addEventListener('click',startGame);
+$('sound-button').addEventListener('click',toggleSound);
 $('pause-button').addEventListener('click',pauseGame);
 $('resume').addEventListener('click',resumeGame);
 $('restart').addEventListener('click',startGame);
@@ -572,6 +612,11 @@ try{
  modelRoot=world.model;scene.add(modelRoot);
  installRoomLighting();
  mapBackdrop=paintMapBackground();
+ actionVisuals=new ActionVisuals(scene,world);
+ bloodEffects=new CombatEffects(scene,world,{blood:'standard'});
+ audioSystem=new AudioSystem(world,{volume:.55,ambient:true});
+ if(coarse)$('blood-mode').value='reduced'; // preserve iPhone GPU budget
+ configureSound(true,false);
  if(new URLSearchParams(location.search).has('test')){
    window.__hissrumDiagnostics=()=>({
      scale:MINIATURE_SCALE,roomHeight:world.bounds.max.y,
@@ -585,7 +630,16 @@ try{
      characterModelReady:charactersReady(),
      authoredVisuals:[...actors.values(),...hostages.values()].filter(v=>v.userData.renderType==='cartridge-strike-quaternius').length,
      flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
-     fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes
+     fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes,
+     dwarfCount:game?.state.wanderers?.length||0,
+     visibleDwarfs:actionVisuals?.dwarfs?.size||0,
+     flyingBots:game?.actors?.filter(a=>a.bot&&a.alive&&a.flying).length||0,
+     botFlightEnabled:!!game?.config.botFlight,
+     bloodHits:bloodEffects?.stats.blood||0,
+     bloodSetting:bloodEffects?.settings.blood,
+     soundEnabled,audioActive:audioSystem?.context?.state==='running',
+     decodedSounds:audioSystem?.buffers.size||0,
+     audioErrors:audioSystem?.errors.slice(0,3)||[]
    });
  }
  setHidden('loading',true);
