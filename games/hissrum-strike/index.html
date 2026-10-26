@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=hissrum-flight-characters-v3">
+  <link rel="stylesheet" href="./style.css?v=hissrum-flybots-effects-v4">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -37,9 +37,21 @@
       <label>Startvapen
         <select id="loadout"><option value="smg">Vector C · SMG</option><option value="ar47">AR-47 · automatkarbin</option><option value="shotgun">Pump 8 · hagel</option><option value="sniper">Scope 5 · sniper rifle (5 skott + zoom)</option></select>
       </label>
+      <label>Ljud
+        <select id="audio-mode"><option value="on" selected>På — 3D-ljud</option><option value="off">Av</option></select>
+      </label>
+      <label>Blod
+        <select id="blood-mode"><option value="standard" selected>På</option><option value="reduced">Mindre</option><option value="off">Av</option></select>
+      </label>
+      <label>Fantasidvärgar
+        <select id="dwarf-mode"><option value="on" selected>8 dvärgar</option><option value="off">Av</option></select>
+      </label>
+      <label>Flygande botar
+        <select id="bot-flight-mode"><option value="on" selected>På — taktiskt</option><option value="off">Av</option></select>
+      </label>
     </div>
     <button id="start" class="primary" disabled>FÖRBEREDER MODELLEN…</button>
-    <p class="menu-foot">Samma stridsmotor som Cartridge Strike. Här finns inga genererade korridorer — endast din V5 GLB-modell.</p>
+    <p class="menu-foot">Riktiga Cartridge Strike-ljud, blod- och träffeffekter, små vandrande fantasidvärgar och flygande botar. Originalets Hissrum 12-modell är oförändrad.</p>
     <div class="menu-links">
       <a href="../../STARTA_HISSRUM_12_V5.html">Öppna originalstudion</a>
       <a href="./README.md">Om spelet</a>
@@ -69,6 +81,7 @@
   <footer class="hud-bottom">
     <div class="hp-block"><span>HÄLSA</span><strong id="health">100</strong><small id="armor">RUSTNING 0</small></div>
     <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small></div>
+    <button class="sound-button" id="sound-button" aria-label="Stäng av ljud" aria-pressed="true">LJUD</button>
     <button class="pause-button" id="pause-button" aria-label="Pausa">Ⅱ</button>
   </footer>
 </div>
@@ -105,6 +118,6 @@
     <button data-touch="scope" id="scope-toggle" aria-pressed="false" hidden>SIKTE</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=hissrum-flight-characters-v3"></script>
+<script type="module" src="./src/main.mjs?v=hissrum-flybots-effects-v4"></script>
 </body>
 </html>
