@@ -1,4 +1,7 @@
 name: Hissrum Strike verification
+concurrency:
+  group: hissrum-strike-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main, feat/hissrum12-mini-strike]
