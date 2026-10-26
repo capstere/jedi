@@ -1,0 +1,40 @@
+name: Import CC0 Cartridge Strike character models
+on:
+  push:
+    branches: [feat/hissrum-flight-sniper-characters-tape]
+    paths: ['.github/workflows/hissrum-copy-character-assets.yml']
+permissions:
+  contents: write
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          ref: feat/hissrum-flight-sniper-characters-tape
+      - name: Copy pinned original male and female 3D characters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p games/hissrum-strike/assets/characters
+          base="https://raw.githubusercontent.com/capstere/cartridge-strike/477399f39e42b5938c497df0047dea7bb463ca13"
+          for gender in male female; do
+            curl --fail --location --retry 3 --silent --show-error \
+              "$base/assets/fps/models/quaternius-operator-$gender.glb" \
+              -o "games/hissrum-strike/assets/characters/quaternius-operator-$gender.glb"
+          done
+          test "$(git hash-object games/hissrum-strike/assets/characters/quaternius-operator-male.glb)" = "483f795326c96f7649ea41f44ca802c9cc87b8a5"
+          test "$(git hash-object games/hissrum-strike/assets/characters/quaternius-operator-female.glb)" = "df940658096e08872fe2867994fc3ecafa6f8dbb"
+          curl --fail --location --retry 3 --silent --show-error \
+            "$base/licenses/quaternius-characters-CC0.txt" \
+            -o "games/hissrum-strike/licenses/quaternius-characters-CC0.txt"
+          test "$(git hash-object games/hissrum-strike/licenses/quaternius-characters-CC0.txt)" = "377bc12dc20bf9d94f78be1741466c6d5cfe41e8"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add games/hissrum-strike/assets/characters/ games/hissrum-strike/licenses/quaternius-characters-CC0.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "Vendor verified Cartridge Strike CC0 skinned character GLBs"
+            git push origin HEAD:refs/heads/feat/hissrum-flight-sniper-characters-tape
+          fi
