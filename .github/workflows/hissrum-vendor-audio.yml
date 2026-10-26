@@ -1,0 +1,63 @@
+name: Vendor Cartridge Strike CC0 sounds
+on:
+  push:
+    branches: [feat/hissrum-audio-blood-dwarfs-flying-bots]
+    paths: ['.github/workflows/hissrum-vendor-audio.yml']
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hissrum-audio-blood-dwarfs-flying-bots
+          persist-credentials: true
+      - name: Copy and verify real original Kenney CC0 audio bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          source="https://raw.githubusercontent.com/capstere/cartridge-strike/477399f39e42b5938c497df0047dea7bb463ca13"
+          mkdir -p games/hissrum-strike/assets/audio games/hissrum-strike/licenses
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_concrete_000.ogg" -o "games/hissrum-strike/assets/audio/footstep_concrete_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_concrete_000.ogg)" = "163cc56468f1734fe694351e7ff984699afa8b86"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_concrete_001.ogg" -o "games/hissrum-strike/assets/audio/footstep_concrete_001.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_concrete_001.ogg)" = "4c62bac1fbdd2a18594139a34939eab2e1c82ba7"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_concrete_002.ogg" -o "games/hissrum-strike/assets/audio/footstep_concrete_002.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_concrete_002.ogg)" = "99aec9818d9da261ba1350a9b50144f7189a20e5"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/impactMetal_light_000.ogg" -o "games/hissrum-strike/assets/audio/impactMetal_light_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/impactMetal_light_000.ogg)" = "7d49262cc9f69eb517cf644f61940ace16714f22"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/impactMetal_light_001.ogg" -o "games/hissrum-strike/assets/audio/impactMetal_light_001.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/impactMetal_light_001.ogg)" = "ff73e4a5443245f00f8ec3f211040ee51faf22b0"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/impactMetal_medium_000.ogg" -o "games/hissrum-strike/assets/audio/impactMetal_medium_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/impactMetal_medium_000.ogg)" = "2b1bbe397a4159d1474a6438cb5b3e9ad0378f2b"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/impactSoft_medium_000.ogg" -o "games/hissrum-strike/assets/audio/impactSoft_medium_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/impactSoft_medium_000.ogg)" = "bf1027b541bfe16cc80af24807ca9bce271c267a"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/impactGeneric_light_000.ogg" -o "games/hissrum-strike/assets/audio/impactGeneric_light_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/impactGeneric_light_000.ogg)" = "d0a32de2dfbe38e19e0297a047c7dfc77a7ab487"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/explosionCrunch_000.ogg" -o "games/hissrum-strike/assets/audio/explosionCrunch_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/explosionCrunch_000.ogg)" = "019e53664abf859fc5529f95d0db23fa3ac1e42d"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/lowFrequency_explosion_000.ogg" -o "games/hissrum-strike/assets/audio/lowFrequency_explosion_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/lowFrequency_explosion_000.ogg)" = "510ac8421211682e4e3edb3df1769e8f71ee9b1d"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/laserSmall_000.ogg" -o "games/hissrum-strike/assets/audio/laserSmall_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/laserSmall_000.ogg)" = "73ef94a9fdd4a0dc5e5fbc9b9786b349da581d68"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/computerNoise_000.ogg" -o "games/hissrum-strike/assets/audio/computerNoise_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/computerNoise_000.ogg)" = "2221e9e3d52716cdae70ba3c33f45d18beac35a0"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_carpet_000.ogg" -o "games/hissrum-strike/assets/audio/footstep_carpet_000.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_carpet_000.ogg)" = "775aea005b47e03f1abecba3578766b276d8a2c2"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_carpet_001.ogg" -o "games/hissrum-strike/assets/audio/footstep_carpet_001.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_carpet_001.ogg)" = "2070e55236ce2a1819236494bc5db98ec006d351"
+          curl -fLsS --retry 4 "$source/assets/fps/audio/footstep_carpet_002.ogg" -o "games/hissrum-strike/assets/audio/footstep_carpet_002.ogg"
+          test "$(git hash-object games/hissrum-strike/assets/audio/footstep_carpet_002.ogg)" = "2070e55236ce2a1819236494bc5db98ec006d351"
+          curl -fLsS --retry 4 "$source/licenses/kenney-impact-sounds-CC0.txt" -o "games/hissrum-strike/licenses/kenney-impact-sounds-CC0.txt"
+          test "$(git hash-object games/hissrum-strike/licenses/kenney-impact-sounds-CC0.txt)" = "4890fe524751b66f08c31ceeeb8074b50445c461"
+          curl -fLsS --retry 4 "$source/licenses/kenney-sci-fi-sounds-CC0.txt" -o "games/hissrum-strike/licenses/kenney-sci-fi-sounds-CC0.txt"
+          test "$(git hash-object games/hissrum-strike/licenses/kenney-sci-fi-sounds-CC0.txt)" = "7afc21fd71c486d1b93308c03f5994b8cf463a44"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add games/hissrum-strike/assets/audio games/hissrum-strike/licenses/kenney-*-sounds-CC0.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Vendor verified Cartridge Strike CC0 audio samples for Hissrum Strike"
+            git push origin HEAD:refs/heads/feat/hissrum-audio-blood-dwarfs-flying-bots
+          fi
