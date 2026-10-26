@@ -641,6 +641,29 @@ try{
      decodedSounds:audioSystem?.buffers.size||0,
      audioErrors:audioSystem?.errors.slice(0,3)||[]
    });
+   // Read-only visual QA plus a controlled hit on a synthetic event, available
+   // ONLY when ?test is explicitly present. Never mutates a player's HP.
+   window.__hissrumVisualTest={
+     paintDamage:()=>{
+       if(!game||!bloodEffects)return false;
+       const target=game.actors.find(a=>a.alive&&!a.isPlayer);
+       if(!target)return false;
+       const event={type:'damage',serial:100000000+Math.floor(game.state.time*100),
+         amount:19,hp:52,actorId:target.id,sourceId:game.player.id,
+         point:{x:target.x,y:target.y+target.height*.72,z:target.z},
+         direction:{x:.7,y:.1,z:.2}};
+       bloodEffects.handle([event],game);
+       return bloodEffects.stats.blood>0;
+     },
+     previewSound:()=>{
+       if(!game||!audioSystem)return false;
+       audioSystem.handle([{type:'shot',serial:999001,actorId:game.player.id,
+         team:game.player.team,weapon:'ar47',time:game.state.time,
+         x:game.player.x,y:game.player.y+1.5,z:game.player.z}],
+         {...game.player,y:game.player.y+1.5},game.state.time);
+       return audioSystem.stats.played>0;
+     }
+   };
  }
  setHidden('loading',true);
  $('start').disabled=false;$('start').textContent='STARTA MINI-MATCH';
