@@ -155,6 +155,8 @@ h1 span{display:block;color:var(--cyan)}
   .move-pad{width:96px;height:96px;left:12px;bottom:calc(85px + env(safe-area-inset-bottom));border-width:1px;background:rgba(19,44,55,.12);border-color:rgba(157,226,217,.35)}
   #move-stick{width:34px;height:34px;left:30px;top:30px;background:rgba(172,248,232,.62)}
   .touch-actions{grid-template-columns:repeat(2,46px);gap:6px;right:10px;bottom:calc(86px + env(safe-area-inset-bottom))}
+  /* Reserve the bottom HUD row so touch-look never blocks the pause button. */
+  #look-zone{bottom:calc(68px + env(safe-area-inset-bottom))}
   .touch-actions button{width:46px;height:46px;font-size:10px;border-color:rgba(138,212,202,.6);background:rgba(8,35,45,.76)}
   .touch-actions .fire-button{height:98px;font-size:14px;border-radius:24px;background:rgba(177,252,224,.78)}
   .spectating{bottom:calc(196px + env(safe-area-inset-bottom));font-size:13px;padding:6px 10px}
