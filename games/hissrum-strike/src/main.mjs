@@ -242,12 +242,13 @@ function cameraFollow(dt){
  weaponRoot.visible=p.alive;
  gunKick=Math.max(0,gunKick-dt*.45);
  weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
- weaponRoot.position.set(.30,-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,-.52+gunKick);
+ weaponRoot.position.set(coarse?.21:.30,coarse?-.36:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.68:-.52+gunKick);
  weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
  const w=WEAPONS[p.weapon];
- if(w?.slot==='pistol')weaponRoot.scale.set(.7,.8,.68);
- else if(w?.slot==='knife')weaponRoot.scale.set(.28,.5,.68);
- else weaponRoot.scale.set(1,1,1);
+ const s=coarse?.76:1;
+ if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
+ else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
+ else weaponRoot.scale.set(s,s,s);
  muzzle.visible=performance.now()<shotUntil;
 }
 function activeInput(){
@@ -267,13 +268,28 @@ function paintMapBackground(){
  const ctx=c.getContext('2d'),b=world.bounds;
  const width=b.max.x-b.min.x,depth=b.max.z-b.min.z;
  ctx.fillStyle='#08222a';ctx.fillRect(0,0,190,190);
- ctx.fillStyle='#335963';
+ ctx.fillStyle='#34545d';
  const step=world.navigation.spacing;
  for(const n of world.navigation.nodes){
    const x=8+(n.x-b.min.x)/width*174,y=8+(n.z-b.min.z)/depth*174;
-   ctx.fillRect(x-step/width*87,y-step/depth*87,Math.max(1,step/width*174),Math.max(1,step/depth*174));
+   ctx.fillRect(x,y,Math.max(1,step/width*174),Math.max(1,step/depth*174));
  }
- ctx.strokeStyle='#6aa6a5';ctx.lineWidth=1;ctx.strokeRect(7.5,7.5,175,175);
+ // Real GLB furniture footprints — the map now has recognizable structure.
+ ctx.globalAlpha=.96;
+ for(const o of world.landmarks){
+   const x=8+(o.min.x-b.min.x)/width*174,y=8+(o.min.z-b.min.z)/depth*174;
+   const ww=Math.max(1.5,(o.max.x-o.min.x)/width*174);
+   const hh=Math.max(1.5,(o.max.z-o.min.z)/depth*174);
+   ctx.fillStyle=/CREFORM/i.test(o.name)?'#62e0e6':
+     /EUR-pall|kartong/i.test(o.name)?'#deb577':
+     /sopkärl|Torr-is/i.test(o.name)?'#929da5':'#a6bfac';
+   ctx.fillRect(x,y,ww,hh);
+   if(/CREFORM/i.test(o.name)){ctx.strokeStyle='#f2ffff';ctx.lineWidth=.7;ctx.strokeRect(x,y,ww,hh);}
+ }
+ ctx.globalAlpha=1;
+ ctx.strokeStyle='#9dc3c9';ctx.lineWidth=1.8;ctx.strokeRect(7.5,7.5,175,175);
+ ctx.font='bold 9px sans-serif';ctx.fillStyle='#ebf5f3';
+ ctx.fillText('HISS 12',75,17);
  return c;
 }
 function drawMinimap(){
@@ -325,7 +341,7 @@ function refreshHUD(now){
  $('reserve').textContent=item?.reserve??'—';
  $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM': 'R · LADDA OM';
  $('health').style.color=p.hp<30?'#ff9584':'#f5fcfc';
- $('mission').textContent=s.mode==='endless'?'5 MOT 5 · MINIATYRSTRID I HISSRUM 12':
+ $('mission').textContent=s.mode==='endless'?(coarse?'HISSRUM 12 · MINI 5V5':'5 MOT 5 · MINIATYRSTRID I HISSRUM 12'):
    s.bomb.status==='planted'?'DESARMERA BOMBEN · SKYDDA GISSLAN':
    'FÖRSVARA HISSRUMMET · HINDRA PLANTERING OCH RÄDDNING';
  $('spectating').hidden=p.alive;
@@ -353,8 +369,10 @@ function frame(now){
  }else{
    if(world&&!game){
      const b=world.bounds,cx=(b.min.x+b.max.x)/2,cz=(b.min.z+b.max.z)/2;
-     camera.position.set(cx-15,16,cz+28);
-     camera.lookAt(cx,2,cz);
+     camera.position.set(cx+3,MINIATURE_SCALE*2.15,cz+(b.max.z-b.min.z)*.43);
+     const feature=world.landmarks.find(o=>/CREFORM-vagn 900/i.test(o.name))
+       ||world.landmarks.find(o=>/CREFORM/i.test(o.name));
+     camera.lookAt(feature?.x??cx,MINIATURE_SCALE*.7,feature?.z??cz);
    }
  }
  for(const t of tracers)if(t.until<now)t.line.visible=false;
