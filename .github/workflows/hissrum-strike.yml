@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Inspect Hissrum 12 source model geometry
+        run: python3 games/hissrum-strike/tests/inspect_glb.py
       - name: Check module syntax
         run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - name: Run deterministic navigation and model tests
