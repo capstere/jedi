@@ -85,6 +85,8 @@ async function launchReadyPage(context,tag,issues){
   }
   assert.ok(Math.abs(diag.floorReference)<.12,'floor reference cannot be bottom of room substructure');
   assert.ok(diag.player&&Math.abs(diag.player.y)<.3,'player must stand ON real floor, not under it');
+  assert.ok(Math.abs(diag.player.yaw-diag.anchors.analysts[0].yaw)<.16,
+    'pointer-lock acquisition must not swing camera away from the intended GLB landmarks');
   assert.ok(diag.player.eye>1.1&&diag.player.eye<3.5,'first-person camera must be above floor');
   assert.ok(diag.stats.roomExtent.z<55,'elevator cabin must not expand the playable arena');
   assert.ok(diag.namedProps.some(p=>p.ndc.every(Number.isFinite)&&Math.abs(p.ndc[0])<.9&&Math.abs(p.ndc[1])<.9&&p.ndc[2]>0&&p.ndc[2]<1),
