@@ -10,6 +10,11 @@ export function updateBotFlight(game,actor,input,dt){
  if(!actor.bot||!actor.alive||!game.config.botFlight)return input;
  const now=game.state.time,world=game.world;
  const state=actor.airPatrol??={mode:'ground',nextAt:2+actor.index*.79+(actor.team==='counterAnalysts'?1.3:0),until:0,goalY:0,landSince:0};
+ // Respawn and fresh rounds force flying=false. Clear any interrupted patrol
+ // so an AI killed during descent can still take off in subsequent rounds.
+ if(!actor.flying&&state.mode!=='ground'){
+   state.mode='ground';state.goalY=0;state.nextAt=now+3.5;
+ }
  const urgent=!!actor.action || game.bomb?.carrierId===actor.id ||
    game.bomb?.status==='planted' || game.hostages?.some(h=>h.escortId===actor.id);
  const flyingBots=game.actors.filter(a=>a.bot&&a.alive&&a.flying).length;
