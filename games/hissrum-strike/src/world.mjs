@@ -1,7 +1,9 @@
 /**
  * GLB-only environment adapter for Cartridge Strike's authoritative Game.
- * The model is scaled 10x, so a 1.7-unit actor is ~17 cm high relative to the
- * 7.5 m room. Collision/rays/AI paths all use the ACTUAL exported triangles.
+ * The room's reference floor is Y=0 in the source GLB (the structural base
+ * reaches Y=-0.19). Never translate the model by its absolute bottom: that
+ * would leave the player standing UNDER the finished floor.
+ * Scale 6x keeps the players approximately 28 cm tall inside the real room.
  */
 import * as THREE from 'three';
 import {GLTFLoader} from '../vendor/three/addons/loaders/GLTFLoader.js';
@@ -10,7 +12,7 @@ import {Capsule} from '../vendor/three/addons/math/Capsule.js';
 import {createNavigation,selectAnchors} from './navigation.mjs';
 
 export const ROOM_MODEL='Hissrum12_V5_med_39_objekt.glb';
-export const MINIATURE_SCALE=10;
+export const MINIATURE_SCALE=6;
 const EPS=.0001;
 const position=new THREE.Vector3();
 const ray=new THREE.Ray();
@@ -71,11 +73,24 @@ export async function createHissrumWorld(progress=()=>{}){
   model.name='Hissrum 12 · authentic V5 + 39 objects';
   model.scale.setScalar(MINIATURE_SCALE);
   model.updateMatrixWorld(true);
-  const bounds=new THREE.Box3().setFromObject(model);
-  if(bounds.isEmpty())throw Error('GLB contained no geometry');
-  model.position.y-=bounds.min.y;
+  const fullBounds=new THREE.Box3().setFromObject(model);
+  if(fullBounds.isEmpty())throw Error('GLB contained no geometry');
+  // The exported room has a structural plinth below Y=0 and a complete freight
+  // elevator outside its north wall. Neither must establish the floor height
+  // or the playable room footprint. Anchor to the physical BASE TOP, not the
+  // absolute minimum Y of the entire exported scene.
+  const base=model.getObjectByName('base__trim');
+  if(!base)throw Error('Hissrum V5 base__trim reference not found');
+  const roomBounds=new THREE.Box3().setFromObject(base);
+  const floorReference=roomBounds.max.y;
+  model.position.y-=floorReference;
   model.updateMatrixWorld(true);
-  bounds.setFromObject(model);
+  roomBounds.translate(new THREE.Vector3(0,-floorReference,0));
+  const bounds=roomBounds.clone();
+  bounds.min.y=0;
+  bounds.max.y=fullBounds.max.y-floorReference;
+  if(bounds.max.z-bounds.min.z>MINIATURE_SCALE*8.5 || bounds.max.x-bounds.min.x>MINIATURE_SCALE*8.5)
+    throw Error('Unexpected Hissrum 12 room bounds from base__trim');
   progress('Analyserar verkligt golv och kollisionsytor…');
   const floor=makeFloorIndex(model);
   if(!floor.polygons)throw Error('Inga plana golvtrianglar hittades i GLB. Kontrollera 3D-exporten.');
@@ -83,8 +98,21 @@ export async function createHissrumWorld(progress=()=>{}){
   octree.trianglesPerLeaf=28;
   octree.maxLevel=8;
   octree.fromGraphNode(model);
-  const cache=new Map(),stats={floorTriangles:floor.polygons,meshCount:0,model:ROOM_MODEL,scale:MINIATURE_SCALE};
-  model.traverse(o=>{if(o.isMesh)stats.meshCount++;});
+  const landmarks=[];
+  const landmarkName=/creform|pall|tvättvagn|sopkärl|plastlåda|torr-is|kvävetank|palltruck|kyl/i;
+  const stats={floorTriangles:floor.polygons,meshCount:0,model:ROOM_MODEL,
+    scale:MINIATURE_SCALE,floorReference,roomExtent:{
+      x:bounds.max.x-bounds.min.x,z:bounds.max.z-bounds.min.z}};
+  model.traverse(o=>{
+    if(!o.isMesh)return;
+    stats.meshCount++;
+    if(!landmarkName.test(o.name))return;
+    const box=new THREE.Box3().setFromObject(o);
+    if(box.isEmpty())return;
+    const center=box.getCenter(new THREE.Vector3());
+    landmarks.push({name:o.name,x:center.x,y:center.y,z:center.z,
+      min:{x:box.min.x,z:box.min.z},max:{x:box.max.x,z:box.max.z}});
+  });
   function inside(x,z,r=0){
     return x>=bounds.min.x+r&&x<=bounds.max.x-r&&z>=bounds.min.z+r&&z<=bounds.max.z-r;
   }
@@ -168,7 +196,7 @@ export async function createHissrumWorld(progress=()=>{}){
     const dx=b.x-a.x,dy=(b.y??1)-(a.y??1),dz=b.z-a.z,length=Math.hypot(dx,dy,dz);
     return length<EPS||!raycast({x:a.x,y:a.y??1,z:a.z},{x:dx,y:dy,z:dz},Math.max(0,length-.045),options);
   }
-  const world={model,bounds,octree,floor,inside,canOccupy,canTravel,move,raycast,segmentClear,
+  const world={model,bounds,landmarks,octree,floor,inside,canOccupy,canTravel,move,raycast,segmentClear,
     canStand:(actor,h)=>canOccupy(actor.x,actor.z,actor.radius||.2,h,actor.y||0),
     materialAt:()=> 'concrete',roomAt:(x,z)=>({id:x<bounds.min.x+(bounds.max.x-bounds.min.x)/3?'I01':
       x>bounds.max.x-(bounds.max.x-bounds.min.x)/3?'I26':'I12',name:'Hissrum 12'}),
@@ -176,10 +204,19 @@ export async function createHissrumWorld(progress=()=>{}){
   progress('Bygger säkra gångvägar mellan de verkliga objekten…');
   world.navigation=createNavigation(world,{spacing:1.45});
   world.findPath=world.navigation.findPath;
-  world.anchors=selectAnchors(world.navigation,bounds);
+  const heroTarget=landmarks.find(x=>/CREFORM-vagn 900/i.test(x.name))
+    || landmarks.find(x=>/CREFORM/i.test(x.name))
+    || {x:(bounds.min.x+bounds.max.x)/2,z:(bounds.min.z+bounds.max.z)/2};
+  world.anchors=selectAnchors(world.navigation,bounds,heroTarget);
+  stats.landmarks=landmarks.length;
+  stats.heroTarget=heroTarget.name||'room center';
+  stats.playerSpawn={...world.anchors.analysts[0]};
+  // A regression assertion against the original bug: the player's physical
+  // floor cannot sit above their camera or we would render from below the room.
+  if(Math.abs(model.position.y)>MINIATURE_SCALE*.05 || !canOccupy(world.anchors.analysts[0].x,world.anchors.analysts[0].z,.2,1.7,0))
+    throw Error('Hissrum FPS spawn is not on the actual room floor');
+  console.info('[Hissrum Strike] World validated',JSON.stringify(stats));
   stats.navigation=world.navigation.statistics;
   stats.spawns=10;
-  // Cache intentionally reserved for future occlusion work; no background worker.
-  cache.clear();
   return world;
 }
