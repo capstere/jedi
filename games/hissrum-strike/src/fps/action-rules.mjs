@@ -154,7 +154,7 @@ export function updateRockets(g,dt,rayActor){
  }
  g.state.projectiles=remaining;
 }
-function initializeWanderers(g){
+export function initializeWanderers(g){
  // Unlike Cartridge Strike's multi-room map, Hissrum 12 is one connected
  // floor. Sampling one node per pseudo-room made only 2-3 dwarfs appear.
  // Spawn eight distinct fantasy dwarfs on the REAL walkable GLB navigation.
