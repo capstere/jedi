@@ -155,16 +155,32 @@ export function updateRockets(g,dt,rayActor){
  g.state.projectiles=remaining;
 }
 function initializeWanderers(g){
+ // Unlike Cartridge Strike's multi-room map, Hissrum 12 is one connected
+ // floor. Sampling one node per pseudo-room made only 2-3 dwarfs appear.
+ // Spawn eight distinct fantasy dwarfs on the REAL walkable GLB navigation.
  const random=seededRandom((g.seed^0x676e6f6d)>>>0),nodes=g.world.navigation?.nodes||[];
  g.wanderRandom=random;g.state.wanderers=[];g.wanderNodes=[];
  if(!g.config.wanderers||!nodes.length)return;
- const start=g.world.navigation.nearest(g.world.anchors.analysts[0]);
- const roomNodes=new Map();
- for(const n of nodes){const room=g.world.roomAt(n.x,n.z);if(!room||roomNodes.has(room.id)||!g.world.canOccupy(n.x,n.z,.2,.86))continue;if(!g.world.findPath(start,n).length)continue;roomNodes.set(room.id,n);}
- g.wanderNodes=[...roomNodes.values()];
- const points=[...g.wanderNodes];
- for(let i=0;i<Math.min(14,points.length);i++){
-  const p=points.splice(Math.floor(random()*points.length),1)[0];g.state.wanderers.push({id:`dwarf-${i}`,name:`Fantasidvärg ${i+1}`,kind:'dwarf',hp:65,armor:0,alive:true,deaths:0,deathAt:null,respawnAt:null,spawn:{x:p.x,z:p.z},x:p.x,y:0,z:p.z,yaw:random()*6.28,height:.86,radius:.16,path:[],nextPlan:random()*4,moving:0,steps:0,variant:i%5});
+ const safe=nodes.filter(n=>g.world.canOccupy(n.x,n.z,.18,.86,0));
+ if(!safe.length)return;
+ // Deterministic, seeded selection that never teleports outside the octree.
+ const shuffled=[...safe];for(let i=shuffled.length-1;i>0;i--){
+   const j=Math.floor(random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+ }
+ g.wanderNodes=shuffled.filter((_,i)=>i%4===0);
+ if(g.wanderNodes.length<5)g.wanderNodes=shuffled;
+ const chosen=[];
+ for(const n of shuffled){
+   if(chosen.some(p=>dist(p,n)<3.0))continue;
+   if(g.actors.some(a=>a.alive&&dist(a,n)<1.2))continue;
+   chosen.push(n);if(chosen.length===8)break;
+ }
+ for(const [i,p]of chosen.entries()){
+  g.state.wanderers.push({id:`dwarf-${i}`,name:`Fantasidvärg ${i+1}`,kind:'dwarf',
+   hp:65,armor:0,alive:true,deaths:0,deathAt:null,respawnAt:null,
+   spawn:{x:p.x,z:p.z},x:p.x,y:0,z:p.z,yaw:random()*6.28,
+   height:.86,radius:.16,path:[],nextPlan:random()*4,
+   moving:0,steps:0,variant:i%5});
  }
 }
 function updateWanderers(g,dt){
