@@ -111,41 +111,38 @@ export function createNavigation(world,{spacing=1.45,maxNodes=8000}={}){
   return {nodes:active,grid,spacing,nearest,findPath,statistics:{sampled:nodes.length,connected:active.length,components}};
 }
 
-export function selectAnchors(navigation,bounds,world=null){
+export function selectAnchors(navigation,bounds,featureTarget=null){
   const nodes=navigation.nodes,center={x:(bounds.min.x+bounds.max.x)/2,z:(bounds.min.z+bounds.max.z)/2};
   const w=bounds.max.x-bounds.min.x,d=bounds.max.z-bounds.min.z;
-  // The real Hissrum V5 freight elevator is on the north wall. Starting near
-  // the central aisle and facing this recognizable landmark is much better
-  // than spawning behind the furniture with arbitrary aim.
-  const lift={x:center.x+w*.132,z:bounds.min.z+d*.032};
-  const viewYaw=(p,q)=>Math.atan2(-(q.x-p.x),-(q.z-p.z));
-  function group(target,count,avoid=[],face=center,preferView=false){
-    const ordered=[...nodes].sort((a,b)=>{
-      const score=p=>{
-        const dist=distance(p,target);
-        if(!preferView||!world)return dist;
-        const dir={x:lift.x-p.x,z:lift.z-p.z},l=Math.hypot(dir.x,dir.z);
-        const hit=world.raycast({x:p.x,y:1.48,z:p.z},{x:dir.x/l,y:0,z:dir.z/l},Math.min(l,32),{vision:true});
-        const open=hit?.distance??Math.min(l,32);
-        return dist - Math.min(20,open)*.38;
-      };
-      return score(a)-score(b);
-    });
+  const focal=featureTarget||center;
+  function group(target,count,avoid=[],clearPlayerSight=false){
+    const ordered=[...nodes].sort((a,b)=>distance(a,target)-distance(b,target));
     const selected=[];
     for(const p of ordered){
       if([...selected,...avoid].some(q=>distance(p,q)<1.85))continue;
-      selected.push({x:p.x,z:p.z,y:0,yaw:viewYaw(p,face)});
+      if(clearPlayerSight&&selected.length){
+        const lead=selected[0],fx=-Math.sin(lead.yaw),fz=-Math.cos(lead.yaw);
+        const distanceForward=(p.x-lead.x)*fx+(p.z-lead.z)*fz;
+        // Never line up a friendly character directly in front of the FPS
+        // camera at 1-2 meters; user's screenshot was obscured by their body.
+        if(distanceForward>-.65&&distance(p,lead)<10)continue;
+      }
+      // Cartridge Strike looks toward (-sin(yaw), -cos(yaw)). The old
+      // formula pointed exactly AWAY from the room center and at the wall.
+      selected.push({x:p.x,z:p.z,y:0,
+        yaw:Math.atan2(p.x-focal.x,p.z-focal.z)});
       if(selected.length>=count)break;
     }
     if(selected.length!==count)throw Error('Not enough separated spawn points');
     return selected;
   }
-  // Player begins inside the REAL room looking at the existing blue lift.
-  // Do not reposition the GLB or create additional corridors.
-  const a=group({x:center.x+w*.12,z:center.z+d*.07},5,[],lift,true);
-  const b=group({x:center.x-w*.2,z:center.z-d*.25},5,a,a[0]);
-  const bomb=group({x:center.x-w*.1,z:center.z+d*.12},1,[...a,...b])[0];
-  const hostages=group({x:center.x+w*.05,z:center.z-d*.12},2,[...a,...b,bomb]);
+  // Opposite sides of the same connected real room; not invented exterior rooms.
+  // Start by looking into the recognizable CREFORM and material aisle,
+  // from the *south* side of the actual room, not near its freight elevator.
+  const a=group({x:center.x+w*.13,z:center.z+d*.22},5,[],true);
+  const b=group({x:center.x-w*.28,z:center.z-d*.22},5,a);
+  const bomb=group({x:center.x+w*.19,z:center.z-d*.13},1,[...a,...b])[0];
+  const hostages=group({x:center.x-w*.14,z:center.z+d*.09},2,[...a,...b,bomb]);
   const rescue={...a[0],radius:2.1};
   return {analysts:a,counterAnalysts:b,bomb:{...bomb,radius:1.7},hostages,rescue};
 }
