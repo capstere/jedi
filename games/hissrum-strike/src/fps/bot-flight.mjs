@@ -17,21 +17,45 @@ export function updateBotFlight(game,actor,input,dt){
  }
  const urgent=!!actor.action || game.bomb?.carrierId===actor.id ||
    game.bomb?.status==='planted' || game.hostages?.some(h=>h.escortId===actor.id);
+ const tactical=game.config.tacticalAI===true;
+ const bot=actor.bot;
+ const contact=bot.target?.visible?bot.target.lastSensedPosition
+   :bot.investigation?.lastSensedPosition??bot.sharedContact;
+ const role=bot.tactical?.kind;
  const flyingBots=game.actors.filter(a=>a.bot&&a.alive&&a.flying).length;
+ // Flight is for scouting and firing-angle changes, not arbitrary hovering.
+ // Contacts here are Yuka LAST SIGHTINGS or time-limited squad reports.
+ const eye=(y)=>({x:actor.x,y:y+actor.height-.12,z:actor.z});
+ const point=contact?{x:contact.x,y:contact.y??1.3,z:contact.z}:null;
+ const blocked=point&&world.segmentClear(eye(actor.y),point,{vision:false})===false;
+ const hasTactic=role==='flank'||role==='support';
+ const scout=actor.index===3 && !point && now>state.nextAt+4;
+ const wantsAltitude=!!point&&(blocked||hasTactic)||scout;
+ const mustLand=tactical&&(role==='cover'||actor.hp<42||urgent);
  // A flight patrol is useful when seeking a firing angle or overcoming a
  // blocked ground route. The release interval is intentionally staggered.
- if(state.mode==='ground'&&now>=state.nextAt&&!urgent&&flyingBots<4){
+ if(state.mode==='ground'&&now>=state.nextAt&&!urgent
+   &&(!tactical||wantsAltitude)&&!mustLand&&flyingBots<(tactical?2:4)){
    const climb=.34;
    const safe=world.canOccupy(actor.x,actor.z,actor.radius,actor.height,Math.max(climb,actor.y+climb));
    if(safe){
      state.mode='flight';
-     state.goalY=clamp(1.25+(actor.index%3)*.60,1.0,3.0);
-     state.until=now+4.3+(actor.index%3)*1.1;
+     let desired=clamp(1.25+(actor.index%3)*.60,1.0,3.0);
+     if(tactical){
+       // Prefer the LOWEST valid elevation opening a legitimate sightline.
+       // Never rise through shelves or a ceiling to obtain magical vision.
+       const heights=[1.0,1.55,2.2].filter(y=>world.canOccupy(
+         actor.x,actor.z,actor.radius,actor.height,y));
+       const vantage=point&&heights.find(y=>world.segmentClear(eye(y),point,{vision:false}));
+       desired=vantage??heights[0]??1.0;
+     }
+     state.goalY=desired;
+     state.until=now+(tactical?3.8:4.3)+(actor.index%3)*.9;
      actor.flying=true;actor.vy=0;actor.onGround=false;
      game.emit?.('bot-takeoff',actor,{altitude:state.goalY});
    }else state.nextAt=now+3;
  }
- if(state.mode==='flight'&&(now>=state.until||urgent)){
+ if(state.mode==='flight'&&(now>=state.until||urgent||mustLand)){
    state.mode='landing';state.goalY=0;state.landSince=now;
  }
  if(!actor.flying)return input;
@@ -52,7 +76,7 @@ export function updateBotFlight(game,actor,input,dt){
    }
    if(actor.y<=.025){
      actor.y=0;actor.flying=false;actor.onGround=true;actor.vy=0;
-     state.mode='ground';state.nextAt=now+7.5+(actor.index%4)*1.5;
+     state.mode='ground';state.nextAt=now+(tactical?9:7.5)+(actor.index%4)*1.5;
      game.emit?.('bot-landed',actor);
    }
  }

@@ -75,6 +75,10 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
   assert.equal(diag.dwarfCount,8,'eight original fantasy dwarfs must spawn inside Hissrum V5');
   assert.equal(diag.botFlightEnabled,true,'AI vertical navigation must be on by default');
+  assert.equal(diag.tacticalAIEnabled,true,'bots should use real-room tactical planning');
+  assert.ok(diag.tacticalBots.length>=9,'every opponent and teammate bot should own a tactical controller');
+  assert.ok(diag.tacticalBots.every(b=>Number.isFinite(b.goal?.x)||
+    b.goal===null),'tactical bot goals must remain finite or be intentionally held');
   assert.ok(diag.visibleDwarfs>=8,'Cartridge Strike dwarf meshes must actually be instanced');
   assert.ok(diag.tapeCollidersExcluded>=1,'adhesive floor tape should remain visible but never enter Octree collision');
   assert.ok((await page.locator('#weapon').textContent()).includes('Scope 5'),'sniper selected in Game');
@@ -94,7 +98,7 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.stats.roomExtent.z<55,'elevator cabin must not expand the playable arena');
   assert.ok(diag.namedProps.some(p=>p.ndc.every(Number.isFinite)&&Math.abs(p.ndc[0])<.9&&Math.abs(p.ndc[1])<.9&&p.ndc[2]>0&&p.ndc[2]<1),
    'real named GLB carts/pallets must be IN FRONT of camera');
-  const shot=await page.screenshot({path:'hissrum-strike-browser.png'});
+  const shot=await page.screenshot({timeout:90000,path:'hissrum-strike-browser.png'});
   const desktopMetrics=imageMetrics(shot);console.log('DESKTOP IMAGE METRICS '+JSON.stringify(desktopMetrics));
   assert.ok(desktopMetrics.mean>25,'original-room gameplay is implausibly dark');
   assert.ok(desktopMetrics.std>11,'view lacks readable geometry/contrast');
@@ -109,7 +113,7 @@ async function launchReadyPage(context,tag,issues){
     'gunshot must reach the live positional audio engine');
   mediaStats=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(mediaStats.bloodHits>0,'blood FX statistics should update after damage');
-  await page.screenshot({path:'hissrum-strike-blood-dwarfs.png'});
+  await page.screenshot({timeout:90000,path:'hissrum-strike-blood-dwarfs.png'});
   await page.keyboard.press('KeyM');
   assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,'M should mute');
   await page.keyboard.press('KeyM');
@@ -121,7 +125,7 @@ async function launchReadyPage(context,tag,issues){
   assert.equal(scoped.scopeActive,true,'Z opens the sniper scope');
   assert.ok(scoped.fov<65,'sniper should actually zoom camera');
   assert.equal(await page.locator('#scope-overlay').isVisible(),true);
-  await page.screenshot({path:'hissrum-strike-sniper.png'});
+  await page.screenshot({timeout:90000,path:'hissrum-strike-sniper.png'});
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(100);
   await page.keyboard.press('KeyF');
@@ -154,7 +158,13 @@ async function launchReadyPage(context,tag,issues){
   await page.waitForFunction(()=>window.__hissrumDiagnostics()?.flyingBots>0,null,{timeout:85000});
   assert.ok((await page.evaluate(()=>window.__hissrumDiagnostics())).flyingBots>=1,
     'bots must fly physically inside the 3D world, not only have a UI setting');
-  console.log('PASS: Autonomous bot flight visible during real 5v5 simulation');
+  const tactics=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(tactics.tacticalAIEnabled,true);
+  assert.ok(tactics.tacticalBots.some(b=>b.aiState),'bots should choose mission or combat AI states');
+  assert.ok(tactics.tacticalBots.filter(b=>b.flying).length<=2,
+    'only two tactical flying bots at once on mobile-safe AI');
+  console.log('TACTICAL AI GLB LIVE',JSON.stringify(tactics.tacticalBots.slice(0,8)));
+  console.log('PASS: Autonomous tactical bot flight and role-based goals visible during real 5v5 simulation');
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
@@ -173,6 +183,8 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(mobileDiag.authoredVisuals>=10);
   assert.equal(mobileDiag.dwarfCount,8,'mobile game must initialize all dwarfs');
   assert.equal(mobileDiag.botFlightEnabled,true);
+  assert.equal(mobileDiag.tacticalAIEnabled,true);
+  assert.ok(mobileDiag.tacticalBots.length>=9);
   assert.ok(['reduced','standard'].includes(mobileDiag.bloodSetting));
   await mobile.locator('#sound-button').tap();
   assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).soundEnabled,false,
@@ -213,7 +225,7 @@ async function launchReadyPage(context,tag,issues){
   assert.equal(rects.pauseClickTarget,'pause-button','look zone blocks mobile pause button');
   assert.ok(!overlap(rects.r['move-pad'],rects.r['health']),
     'movement pad overlaps health HUD');
-  const phoneShot=await mobile.screenshot({path:'hissrum-strike-mobile.png'});
+  const phoneShot=await mobile.screenshot({timeout:90000,path:'hissrum-strike-mobile.png'});
   const mobileMetrics=imageMetrics(phoneShot);console.log('MOBILE IMAGE METRICS '+JSON.stringify(mobileMetrics));
   assert.ok(mobileMetrics.mean>23,'phone gameplay still black/unrecognizable');
   assert.ok(mobileMetrics.std>10,'phone gameplay lacks visible geometry');

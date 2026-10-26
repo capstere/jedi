@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
-import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-effects-v4';
+import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-ai-v5';
 import {AudioSystem} from './audio.mjs';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
@@ -250,6 +250,7 @@ function startGame(){
    config:{mode,difficulty,loadout,firefight:false,
      wanderers:$('dwarf-mode').value==='on',
      botFlight:$('bot-flight-mode').value==='on',
+     tacticalAI:true, // GLB cover, flanks and observed-squad coordination
      friendlyFire:false,
      buyTime:2,startMoney:4900,roundTime:150,matchWins:5,
      respawnDelay:2.7,spawnProtection:1.4,botSpeed:3.2,runSpeed:4.6}
@@ -652,6 +653,15 @@ try{
      visibleDwarfs:actionVisuals?.dwarfs?.size||0,
      flyingBots:game?.actors?.filter(a=>a.bot&&a.alive&&a.flying).length||0,
      botFlightEnabled:!!game?.config.botFlight,
+     tacticalAIEnabled:!!game?.config.tacticalAI,
+     tacticalBots:game?.actors?.filter(a=>a.bot&&a.alive).map(a=>({
+       id:a.id,aiState:a.aiState||'',mode:a.bot?.mode||'',
+       tactic:a.bot?.tactical?.kind||null,
+       hasTarget:!!a.bot?.target?.visible,
+       usingObservedContact:!!a.bot?.sharedContact,
+       flying:!!a.flying,
+       goal:a.bot?.goal?{x:a.bot.goal.x,z:a.bot.goal.z}:null
+     }))||[],
      bloodHits:bloodEffects?.stats.blood||0,
      bloodSetting:bloodEffects?.settings.blood,
      soundEnabled,audioActive:audioSystem?.context?.state==='running',

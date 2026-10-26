@@ -110,3 +110,16 @@ Samtliga AI-botar kan **välja att flyga** i omgångar. Under en flightplan styr
 ### Test
 
 `node --test games/hissrum-strike/tests/*.test.mjs` kontrollerar modellfiler, licensierade ljud och MP3-fallback, åtta separerade dvärgpositioner, botflygningens uppstigning/svävning/landning och samtliga tidigare kollisionsprov. Den utökade Chromiumtesten kör det verkliga spelet på dator och iPhone-viewport, bekräftar dekodade ljud, 3D-dvärgar, botflyg samt blodpartiklar och pauskontroller.
+
+## Taktiskt smartare botar
+
+Hissrum Strike använder nu Yuka för grundläggande navigering och perception, plus ett litet taktiskt beslutsstöd (`src/fps/tactical-ai.mjs`) som känner till **verkliga kollisionsytor och gångvägar från V5-modellen**.
+
+- **Skydd:** skadade och omladdande botar söker sig till gångbara platser där vagnar, hyllor eller väggar faktiskt bryter fiendens skottlinje. De går aldrig genom modellen eller till en plats utan giltig gångväg.
+- **Flankering:** vissa botar försöker komma in från sidan till en synlig fiende, andra försvarar vinkel eller ger understöd. De undviker att stå i samma trånga passage som en lagkamrat.
+- **Lagobservationer:** botar delar endast de senaste rapporterade positionerna från verkliga synobservationer, och dessa upphör att gälla efter några sekunder. De får ingen information om osedda spelares nuvarande positioner.
+- **Elddisciplin:** botarna skjuter inte full fart med dålig riktning eller medan de springer på längre håll. Befintlig skada, reaktionstid, ammunition, sikt genom rök och svårighetsgrad gäller fortfarande.
+- **Flygning som taktiskt verktyg:** när en flankare upptäckt en fiende kan boten använda en giltig högre skjutvinkel, men inte flyga genom hinder. Högst två botar flyger samtidigt, och skadade eller uppdragsupptagna botar håller sig hellre på marken.
+- **Prestanda:** planeringen sker med begränsat antal verkliga golvnoder, max sju navigeringskontroller per beslut och ett kort taktiskt åtagande som förhindrar omplanering för varje bildruta.
+
+Taktisk AI är aktiv som standard i Hissrum Strike, men originalet Cartridge Strike och Hissrum 12 Layout Studio påverkas inte. Testerna i `tests/tactical-ai.test.mjs` kontrollerar skydd, flankering, aktuell lagobservation, fördelning mellan lagkamrater, begränsade sökningar och taktisk flygning. Fulla browser-smoke-testet körs även i mobilvy.
