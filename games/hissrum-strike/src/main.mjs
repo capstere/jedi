@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-visual-v2';
 import {Game,WEAPONS} from './fps/game.mjs';
+import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
@@ -43,67 +44,63 @@ function setupGraphics(){
   });
 }
 
-const geometry={
-  body:new THREE.CapsuleGeometry(.21,.7,3,8),
-  head:new THREE.SphereGeometry(.235,10,7),
-  visor:new THREE.BoxGeometry(.28,.12,.10),
-  leg:new THREE.CapsuleGeometry(.10,.37,2,6),
-  rifle:new THREE.BoxGeometry(.11,.11,.55),
-  arm:new THREE.BoxGeometry(.13,.41,.17),
-  backpack:new THREE.BoxGeometry(.32,.4,.16)
-};
 const mat=(color,metalness=.15)=>new THREE.MeshStandardMaterial({color,roughness:.67,metalness});
-const teamMats={
- analysts:{suit:mat('#168d95'),highlight:mat('#a3fff0'),helmet:mat('#173e4b'),visor:mat('#80fded',.65)},
- counterAnalysts:{suit:mat('#a35832'),highlight:mat('#ffbb77'),helmet:mat('#442a2a'),visor:mat('#ed944a',.65)},
- hostage:{suit:mat('#717f9a'),highlight:mat('#f5e5bc'),helmet:mat('#c1ccd3'),visor:mat('#e8ded4')}
-};
 const darkMat=mat('#1a2931',.62);
 function part(group,geo,material,x,y,z){
  const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,y,z);group.add(mesh);return mesh;
 }
-function makeCharacter(team){
- const m=teamMats[team],root=new THREE.Group();
- part(root,geometry.body,m.suit,0,.96,0);
- part(root,geometry.head,m.helmet,0,1.53,-.01);
- part(root,geometry.visor,m.visor,0,1.55,-.23);
- part(root,geometry.backpack,m.highlight,0,.96,.21);
- part(root,geometry.leg,darkMat,-.12,.36,.01);
- part(root,geometry.leg,darkMat,.12,.36,.01);
- part(root,geometry.arm,m.suit,-.27,1.0,-.06);
- part(root,geometry.arm,m.suit,.27,1.0,-.06);
- if(team!=='hostage')part(root,geometry.rifle,darkMat,.10,1.07,-.35);
- scene.add(root);return root;
+/** EXACT authored Quaternius skins and real animation clips from Cartridge Strike.
+ *  Geometry, animations and textures are shared; skeleton and mixers are
+ *  unique per actor so bots can move independently in the 1:6 room.
+ */
+function makeCharacter(team,id){
+ if(!charactersReady())throw Error('Cartridge Strike character assets not ready');
+ const root=new THREE.Group();
+ const avatar=createAuthoredAvatar(team,id,team==='hostage');
+ root.userData.avatar=avatar;
+ root.userData.renderType='cartridge-strike-quaternius';
+ root.add(avatar.holder);
+ scene.add(root);
+ return root;
 }
 function clearCharacters(){
- for(const object of [...actors.values(),...hostages.values()])scene.remove(object);
+ for(const visual of [...actors.values(),...hostages.values()]){
+   scene.remove(visual);
+   if(visual.userData.avatar)disposeAvatar(visual.userData.avatar);
+ }
  actors.clear();hostages.clear();
+}
+function poseCharacter(visual,actor,now){
+ // Keep mobile GPU skinning smooth without evaluating 12 rigs at 60 FPS.
+ const period=coarse?1/24:1/45;
+ if(visual.userData.nextPoseTime!==undefined&&now<visual.userData.nextPoseTime)return;
+ visual.userData.nextPoseTime=now+period;
+ animateAuthored(visual.userData.avatar,actor,now);
 }
 function syncCharacters(dt){
  if(!game)return;
  const cameraActor=spectateActor||game.player;
  for(const actor of game.actors){
    let visual=actors.get(actor.id);
-   if(!visual){visual=makeCharacter(actor.team);actors.set(actor.id,visual);}
+   if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
    visual.visible=actor.alive&&actor!==cameraActor;
    if(!visual.visible)continue;
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
-   visual.scale.setScalar(actor.height/1.7);
-   const legs=visual.children[4],otherLeg=visual.children[5];
-   const gait=game.state.time*11+(actor.index||0);
-   const step=Math.min(.16,actor.moving*.03);
-   legs.rotation.x=Math.sin(gait)*step;
-   otherLeg.rotation.x=-Math.sin(gait)*step;
+   // Authored crouch and jump clips handle body pose; do not squash the mesh
+   // when Game changes its collision capsule height.
+   visual.scale.setScalar(1);
+   poseCharacter(visual,actor,game.state.time);
  }
  for(const hostage of game.hostages){
    let visual=hostages.get(hostage.id);
-   if(!visual){visual=makeCharacter('hostage');hostages.set(hostage.id,visual);}
+   if(!visual){visual=makeCharacter('hostage',hostage.id);hostages.set(hostage.id,visual);}
    visual.visible=hostage.alive!==false&&!hostage.rescued;
    if(!visual.visible)continue;
    visual.position.set(hostage.x,hostage.y||0,hostage.z);
    visual.rotation.y=hostage.yaw||0;
-   visual.scale.setScalar((hostage.height||1.6)/1.7);
+   visual.scale.setScalar(.95);
+   poseCharacter(visual,hostage,game.state.time);
  }
 }
 
@@ -467,7 +464,10 @@ setupTouch();
 setupGraphics();
 requestAnimationFrame(frame);
 try{
- world=await createHissrumWorld(progress);
+ // Load the copied CC0 Cartridge Strike GLBs before allowing any match.
+ progress('Laddar Cartridge Strike-karaktärer och animationsriggar…');
+ const [room]=await Promise.all([createHissrumWorld(progress),loadCharacterLibrary()]);
+ world=room;
  modelRoot=world.model;scene.add(modelRoot);
  installRoomLighting();
  mapBackdrop=paintMapBackground();
