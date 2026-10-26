@@ -55,6 +55,8 @@ async function ready(){for(let i=0;i<40;i++){if(await checkServer())return;await
   assert.ok(inspect.player.x>inspect.roomBounds.min[0]&&inspect.player.x<inspect.roomBounds.max[0]
      &&inspect.player.z>inspect.roomBounds.min[2]&&inspect.player.z<inspect.roomBounds.max[2],
     'player must spawn inside actual source floor');
+  assert.ok(Math.abs(inspect.camera.yaw-inspect.anchor.yaw)<.4&&Math.abs(inspect.camera.pitch-.085)<.4,
+    'pointer lock must not warp the initial player camera toward the ceiling');
   assert.ok(inspect.camera.position[1]>1.05 && inspect.camera.position[1]<2.3,
     'player camera must be above the real floor at miniature eye height');
   assert.ok(inspect.objects>=80,'all original model pieces should render');
