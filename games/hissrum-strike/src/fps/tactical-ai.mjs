@@ -101,7 +101,8 @@ export function planTacticalPosition(game,actor,known,mode,{maxCandidates=28}={}
  for(const node of nodes){
    const travel=distance2(actor,node),d=distance2(node,known);
    if(travel>12.5||d<1.45||d>23)continue;
-   if(!world.canOccupy(node.x,node.z,actor.radius||.2,actor.height||1.7,0))continue;
+   // navigation.nodes was already collision-tested when the room loaded.
+   // Defer the expensive fresh capsule checks until AFTER preselection.
    const lateral=sideOffset(actor,node,known);
    const raw=travel*.38+Math.abs(d-range)*.4-
      (mode==='flank'?Math.min(lateral,7)*.7:mode==='investigate'?Math.min(lateral,5)*.35:0);
@@ -109,6 +110,7 @@ export function planTacticalPosition(game,actor,known,mode,{maxCandidates=28}={}
  }
  shortlisted.sort((a,b)=>a.raw-b.raw);
  const ranked=shortlisted.slice(0,clamp(maxCandidates,4,40))
+  .filter(v=>world.canOccupy(v.node.x,v.node.z,actor.radius||.2,actor.height||1.7,0))
   .map(v=>({point:v.node,score:scoreTacticalPosition(game,actor,v.node,known,mode)}))
   .filter(v=>Number.isFinite(v.score)).sort((a,b)=>b.score-a.score);
  for(const c of ranked.slice(0,7)){
