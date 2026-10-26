@@ -341,6 +341,16 @@ function refreshHUD(now){
  $('reserve').textContent=item?.reserve??'—';
  $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM': 'R · LADDA OM';
  $('health').style.color=p.hp<30?'#ff9584':'#f5fcfc';
+ if(world.landmarks.length){
+   let nearest=null,best=Infinity;
+   for(const prop of world.landmarks){
+     const d=Math.hypot(prop.x-p.x,prop.z-p.z);
+     if(d<best){nearest=prop;best=d;}
+   }
+   $('nearby-label').textContent=nearest
+      ?(best<MINIATURE_SCALE*2.2?'NÄRA · ':'MOT · ')+nearest.name.replace(/ · kopia.*$/,'').slice(0,26)
+      :'HISSRUM 12';
+ }
  $('mission').textContent=s.mode==='endless'?(coarse?'HISSRUM 12 · MINI 5V5':'5 MOT 5 · MINIATYRSTRID I HISSRUM 12'):
    s.bomb.status==='planted'?'DESARMERA BOMBEN · SKYDDA GISSLAN':
    'FÖRSVARA HISSRUMMET · HINDRA PLANTERING OCH RÄDDNING';
