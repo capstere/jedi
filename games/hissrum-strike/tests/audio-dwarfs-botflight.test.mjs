@@ -52,7 +52,7 @@ test('Dwarfs use eight separated connected real room nodes with five original vi
 function fixture(){
  const actor={id:'analysts-2',index:2,team:'analysts',bot:{},isPlayer:false,
    x:3,z:3,y:0,radius:.2,height:1.7,yaw:0,pitch:0,alive:true,
-   onGround:true,vy:0,crouching:false,steps:0,moving:0,distanceWalked:0};
+   onGround:true,vy:0,crouching:false,flying:false,steps:0,moving:0,distanceWalked:0};
  const events=[];
  const g={seed:1,state:{time:5},config:{botFlight:true,botSpeed:3.2,flySpeed:5.8,
      standingHeight:1.7,crouchingHeight:1.08,crouchSpeed:1.35,sneakSpeed:1.65,
