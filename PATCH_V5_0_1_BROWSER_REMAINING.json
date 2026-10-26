@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-10-20T18:26:22.385Z",
+  "fileProtocol": false,
+  "loadMode": "inline-built-html",
+  "headless": false,
+  "networkDisabled": true,
+  "results": [
+    {
+      "name": "chaos_heatmap",
+      "details": {
+        "steps": 22,
+        "props": 1,
+        "temporary": true,
+        "heatCells": 171,
+        "stats": {
+          "distance": 32.86126173291444,
+          "waitTime": 20.370434782608747,
+          "elapsed": 22.080000000000048,
+          "people": 3,
+          "delivered": 0,
+          "blocked": 0,
+          "navCells": 1517,
+          "navVersion": 5
+        },
+        "visible": true,
+        "chaos": true,
+        "pauseCollection": true,
+        "resetClearsTemporaryAndHeatmap": true,
+        "layoutUnchanged": true
+      },
+      "status": "passed",
+      "elapsedMs": 6380
+    },
+    {
+      "name": "performance12",
+      "details": {
+        "people": 12,
+        "objects": 3,
+        "renderMedianMs": 1.099999999976717,
+        "renderP95Ms": 6.5,
+        "simulationMedianMs": 0,
+        "sampleCount": 24,
+        "diagnostics": {
+          "drawn": 12,
+          "culled": 0,
+          "lod": 12,
+          "triangles": 7532,
+          "frames": 50,
+          "meshResources": 3,
+          "buffers": 16,
+          "poseCaches": 12,
+          "source": "Kenney Mini Characters 1.0 / CC0",
+          "skinJoints": 7
+        },
+        "glError": 0
+      },
+      "status": "passed",
+      "elapsedMs": 9348
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "networkRequests": [],
+  "notes": [
+    "Complete built HTML loaded inline; file:// and persistent localStorage are not verified in this fallback. Offline browser context; headed. Synthetic elapsed ticks speed up behaviour checks. Frame timing includes gl.finish and is not a general hardware guarantee."
+  ],
+  "htmlSha256": "afb8eee42396c5a787c4233a22abb4cc88de7ff3cbaa79814cf0f8ea39bb01d0",
+  "htmlBytes": 4527958,
+  "browser": "144.0.7559.96",
+  "initial": {
+    "objects": 0,
+    "people": 0,
+    "running": false,
+    "chaos": false,
+    "catalog": 26,
+    "glError": 0,
+    "renderer": "WebKit WebGL"
+  },
+  "finishedAt": "2026-10-20T18:26:40.504Z",
+  "status": "passed"
+}

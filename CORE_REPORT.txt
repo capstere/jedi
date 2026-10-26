@@ -1,0 +1,23 @@
+{"cabinTriangles":2116,"materialBatches":16,"portalBothDirections":true,"visualTravel":true,"originalWallOpening":true,"originalDoorReused":true}
+✔ Hissrum12_3D_Layout_Planner_V5/tests/elevator.test.cjs (101.528084ms)
+PASS: 4 CC0 models; full/LOD buffers; 7 retained source clips; articulated idle/walk and finite scale-preserving skin poses.
+✔ Hissrum12_3D_Layout_Planner_V5/tests/npc-assets.test.cjs (94.929875ms)
+V5 CPU simulation benchmark: 12 NPCs, 60 simulated seconds, 305.8 ms total (not a GPU benchmark).
+✔ clearance grid routes around rotated equipment without corner cutting (4.402791ms)
+✔ cabin is connected only through the open existing right door (8.608958ms)
+✔ 12 independent people stay clear of furniture and each other at 4× (308.39575ms)
+✔ changed layout invalidates navigation and trapped people wait instead of teleporting (1.984459ms)
+✔ opposing people yield and clear an 80 cm corridor without permanent deadlock (11.529166ms)
+✔ MH waits for target and door, delivers four transient V4 bags, then returns (8.928042ms)
+✔ no-go zones, chaos props, pause and heatmap stay independent of layout saving (92.846708ms)
+✔ closed floor-tape zones are destinations and no-go areas; open tape is not (5.748042ms)
+✔ explicit configuration saves starts only; invalid import preserves current people (3.531375ms)
+✔ meeting and dance are temporary behaviours and return to ordinary navigation (18.74075ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 579.61175

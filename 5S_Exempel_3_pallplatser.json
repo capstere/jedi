@@ -1,0 +1,88 @@
+{
+  "format": "hissrum12-v3-layout",
+  "version": 3,
+  "model": "hissrum12-scan-2026-10-20-v2",
+  "name": "Exempel · 3 pallplatser",
+  "objects": [
+    {
+      "id": "o-mvgowtdn-yllfsf7",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "x": -3.12,
+      "z": -3.15,
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "rot": 90,
+      "locked": false
+    },
+    {
+      "id": "o-mvgowtdn-0eefj1f",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "x": -3.12,
+      "z": -1.9,
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "rot": 90,
+      "locked": false
+    },
+    {
+      "id": "o-mvgowtdn-c2c78qd",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "x": -3.12,
+      "z": -0.65,
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "rot": 90,
+      "locked": false
+    },
+    {
+      "id": "o-mvgowtdn-hdsb5vf",
+      "type": "cart",
+      "name": "IPT · provuttag",
+      "x": 3.13,
+      "z": -3.15,
+      "w": 0.95,
+      "d": 0.55,
+      "h": 1.15,
+      "rot": 0,
+      "locked": false
+    },
+    {
+      "id": "o-mvgowtdn-0g6mhdl",
+      "type": "shelf",
+      "name": "Material / rekvisitioner",
+      "x": 3.32,
+      "z": -0.85,
+      "w": 1,
+      "d": 0.45,
+      "h": 1.8,
+      "rot": 270,
+      "locked": false
+    },
+    {
+      "id": "o-mvgowtdn-np6ywsz",
+      "type": "material",
+      "name": "Materialpall · hämtning",
+      "x": 0.3,
+      "z": 1.65,
+      "w": 1.2,
+      "d": 0.8,
+      "h": 1.1,
+      "rot": 0,
+      "locked": false
+    }
+  ],
+  "measures": [],
+  "zones": [],
+  "preferences": {
+    "grid": 0.05,
+    "wallSnap": true,
+    "showDoors": true,
+    "doorDepth": 1
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "version": "5.0.0",
+  "date": "2026-10-20",
+  "base_commit": "73f44e821d722a5a33b9b2628f6f1c466b088b66",
+  "branch": "codex/hissrum12-life-simulation-v5",
+  "room_geometry_sha256": "e8e4521987c5fa67c2edd9932ee872cddffc86af4b07680a8a57dfd612175e85",
+  "v2_geometry_unchanged": true,
+  "v3_unchanged": true,
+  "runtime_dependencies": [],
+  "asset_types": 26,
+  "limits": {
+    "objects": 48,
+    "tape_segments": 512,
+    "local_variants": 20,
+    "undo_steps": 60,
+    "people": 12,
+    "nav_cell_metres": 0.18,
+    "npc_radius_metres": 0.28
+  },
+  "cartridge_source_commit": "6067233c23ba63a04e8d0a8e1ccb7a3adbd62906",
+  "private_only": true,
+  "v4_unchanged": true,
+  "html_bytes": 4526699,
+  "html_sha256": "2100b5a5780a2be1a65d8357bf01be25bd88a30cd97a848d1e11f9c75874ca45",
+  "people_variants": 4,
+  "people_asset_bytes": 268488,
+  "people_license": "CC0-1.0 / Kenney Mini Characters 1.0",
+  "browser_scenarios": 8,
+  "core_tests": 12,
+  "simulation_separate_from_layout": true,
+  "standard_layout_schema": "hissrum12-v4-layout / version 4",
+  "scenario_schema": "hissrum12-v5-scenario / version 1",
+  "performance_sample": {
+    "environment": "Chrome 155 headless, local file://, offline",
+    "people": 12,
+    "furniture": 10,
+    "frame_intervals": 120,
+    "median_ms": 16.7,
+    "p95_ms": 16.8,
+    "hardware_independent_guarantee": false
+  }
+}

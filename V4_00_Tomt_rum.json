@@ -1,0 +1,17 @@
+{
+  "format": "hissrum12-v4-layout",
+  "version": 4,
+  "model": "hissrum12-scan-2026-10-20-v2",
+  "name": "Tomt rum",
+  "objects": [],
+  "measures": [],
+  "zones": [],
+  "tapes": [],
+  "keepClear": [],
+  "door": {
+    "angle": 0,
+    "direction": 1
+  },
+  "preferences": {},
+  "variants": []
+}

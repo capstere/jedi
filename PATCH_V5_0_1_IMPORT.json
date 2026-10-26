@@ -1,0 +1,197 @@
+{
+  "startedAt": "2026-10-20T18:28:59.096Z",
+  "htmlSha256": "7e9371026531854c36b678410a1b1b86371b6edb1054bd9b0046dc48c40eebee",
+  "loadMode": "inline-built-html",
+  "headless": false,
+  "networkDisabled": true,
+  "results": [
+    {
+      "name": "incoming_open_door_overrides_current_closed_in_preflight",
+      "details": {
+        "door": 90,
+        "direction": 1,
+        "people": 1,
+        "point": [
+          1.65,
+          -3.8
+        ],
+        "running": false,
+        "free": true
+      },
+      "status": "passed",
+      "elapsedMs": 46
+    },
+    {
+      "name": "invalid_closed_door_scenario_rejected_before_layout_changes",
+      "details": {
+        "error": "En sparad startposition blockeras av den aktuella möbleringen.",
+        "layoutUnchanged": true,
+        "peopleUnchanged": true,
+        "running": true,
+        "door": 90
+      },
+      "status": "passed",
+      "elapsedMs": 29
+    },
+    {
+      "name": "saved_quality_restores_runtime_control_and_reexport",
+      "details": [
+        {
+          "requested": "low",
+          "runtime": "low",
+          "control": "low",
+          "saved": "low"
+        },
+        {
+          "requested": "high",
+          "runtime": "high",
+          "control": "high",
+          "saved": "high"
+        },
+        {
+          "requested": "auto",
+          "runtime": "auto",
+          "control": "auto",
+          "saved": "auto"
+        }
+      ],
+      "status": "passed",
+      "elapsedMs": 2804
+    },
+    {
+      "name": "invalid_quality_rejected_without_mutating_layout_people_or_view",
+      "details": {
+        "error": "Ogiltig grafiknivå i scenariot.",
+        "unchanged": true,
+        "quality": "auto"
+      },
+      "status": "passed",
+      "elapsedMs": 15
+    },
+    {
+      "name": "legacy_missing_display_and_bare_simulation_preserve_quality",
+      "details": {
+        "scenario": "high",
+        "bare": "high",
+        "control": "high",
+        "people": 1,
+        "running": false
+      },
+      "status": "passed",
+      "elapsedMs": 665
+    },
+    {
+      "name": "both_door_directions_and_saved_target_during_animation",
+      "details": [
+        {
+          "direction": 1,
+          "angle": 90,
+          "point": [
+            [
+              1.65,
+              -3.8
+            ]
+          ]
+        },
+        {
+          "direction": -1,
+          "angle": 90,
+          "point": [
+            [
+              1.65,
+              -3.8
+            ]
+          ]
+        }
+      ],
+      "status": "passed",
+      "elapsedMs": 55
+    },
+    {
+      "name": "scenario_without_layout_uses_current_not_target_door_pose",
+      "details": {
+        "error": "En sparad startposition blockeras av den aktuella möbleringen.",
+        "unchanged": true,
+        "people": 0
+      },
+      "status": "passed",
+      "elapsedMs": 657
+    },
+    {
+      "name": "three_supplied_scenarios_import_and_remain_separate_from_layout",
+      "details": [
+        {
+          "file": "V5_01_Liv_i_5S_rummet.json",
+          "count": 4,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        },
+        {
+          "file": "V5_02_MH_upphamtning.json",
+          "count": 1,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        },
+        {
+          "file": "V5_03_Kaizen_Chaos.json",
+          "count": 4,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        }
+      ],
+      "status": "passed",
+      "elapsedMs": 1552
+    },
+    {
+      "name": "real_scenario_file_input_restores_low_quality",
+      "details": {
+        "quality": "low",
+        "paused": true,
+        "glError": 0
+      },
+      "status": "passed",
+      "elapsedMs": 503
+    },
+    {
+      "name": "AB_comparison_camera_and_floor_measurement",
+      "details": {
+        "ABCounts": [
+          1,
+          2
+        ],
+        "sameCamera": true,
+        "length": 2.0000006577064253,
+        "glError": 0
+      },
+      "status": "passed",
+      "elapsedMs": 2056
+    },
+    {
+      "name": "photo_mode_real_PNG_export_and_resume",
+      "details": {
+        "photoPauses": true,
+        "PNGExport": true,
+        "resumeOnExit": true,
+        "people": 4
+      },
+      "status": "passed",
+      "elapsedMs": 3387
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "networkRequests": [],
+  "limitations": [
+    "file:// navigation is blocked by the test environment; the complete unchanged built HTML is loaded inline.",
+    "Persistent localStorage is not verified by this fallback."
+  ],
+  "browser": "144.0.7559.96",
+  "status": "passed",
+  "finishedAt": "2026-10-20T18:29:12.502Z"
+}

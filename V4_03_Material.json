@@ -1,0 +1,83 @@
+{
+  "format": "hissrum12-v4-layout",
+  "version": 4,
+  "model": "hissrum12-scan-2026-10-20-v2",
+  "name": "Material / rekvisitioner",
+  "objects": [
+    {
+      "id": "o-ef08a205-3709-49e0-94f7-b6da6e096c58",
+      "type": "material",
+      "name": "Materialpall",
+      "w": 1.2,
+      "d": 0.8,
+      "h": 1.1,
+      "x": 0.15,
+      "y": 0.006,
+      "z": 1.8,
+      "rot": 0,
+      "locked": false,
+      "params": {}
+    },
+    {
+      "id": "o-e0a7ee07-312d-4fad-84fb-a50945c5bc6e",
+      "type": "shelf",
+      "name": "Lagerhylla",
+      "w": 1,
+      "d": 0.45,
+      "h": 1.8,
+      "x": 2.9,
+      "y": 0.006,
+      "z": -0.4,
+      "rot": 270,
+      "locked": false,
+      "params": {}
+    }
+  ],
+  "tapes": [
+    {
+      "id": "o-7cfdbb0b-7bb3-4d1c-9504-5d818a0675fc",
+      "name": "MATERIAL / REKVISITIONER",
+      "style": "green",
+      "width": 0.05,
+      "dashed": false,
+      "points": [
+        [
+          -0.5499999999999999,
+          1.3
+        ],
+        [
+          0.85,
+          1.3
+        ],
+        [
+          0.85,
+          2.3
+        ],
+        [
+          -0.5499999999999999,
+          2.3
+        ],
+        [
+          -0.5499999999999999,
+          1.3
+        ]
+      ]
+    }
+  ],
+  "keepClear": [],
+  "door": {
+    "angle": 0,
+    "direction": 1,
+    "showSweep": true
+  },
+  "variants": [],
+  "measures": [],
+  "zones": [],
+  "preferences": {
+    "grid": 0.05,
+    "wallSnap": true,
+    "showDoors": true,
+    "doorDepth": 1,
+    "objectSnap": true
+  }
+}

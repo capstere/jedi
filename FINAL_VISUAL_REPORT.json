@@ -1,0 +1,62 @@
+{
+  "status": "passed",
+  "htmlSha256": "87cbbf0c9493e967c7a6fef035368b8c7d7cee4622472eb056ba54928ad80e3f",
+  "htmlBytes": 4526633,
+  "plan": {
+    "northPixels": [
+      699.7555579640903,
+      84.69839624166485
+    ],
+    "height": 928,
+    "span": 12.6,
+    "eye": [
+      0.025,
+      15,
+      -1.5
+    ],
+    "cells": 128
+  },
+  "drag": {
+    "x": -0.5000002762366984,
+    "z": 0.6000002762366985,
+    "start": {
+      "x": -0.5000002762366984,
+      "z": 0.6000002762366985,
+      "yaw": 5.582346677546133
+    },
+    "selected": true
+  },
+  "frameCadence": {
+    "people": 12,
+    "furniture": 10,
+    "samples": 120,
+    "medianMs": 16.699999999999818,
+    "p95Ms": 16.799999999999272,
+    "maxMs": 16.800000000000182,
+    "renderer": {
+      "drawn": 12,
+      "culled": 0,
+      "lod": 12,
+      "triangles": 7462,
+      "frames": 133,
+      "meshResources": 8,
+      "buffers": 41,
+      "poseCaches": 12,
+      "source": "Kenney Mini Characters 1.0 / CC0",
+      "skinJoints": 7
+    },
+    "glError": 0
+  },
+  "photo": {
+    "menusHidden": true,
+    "simulationPaused": true,
+    "pngExport": true,
+    "resumesOnExit": true
+  },
+  "previews": [
+    "V5_01_Layout_Studio.png",
+    "V5_02_Godshiss.png",
+    "V5_03_Trafik_Heatmap.png"
+  ],
+  "errors": []
+}

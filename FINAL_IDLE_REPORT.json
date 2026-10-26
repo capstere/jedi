@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "verifiedAt": "2026-10-20T17:40:37.025Z",
+  "htmlBytes": 4526699,
+  "htmlSha256": "2100b5a5780a2be1a65d8357bf01be25bd88a30cd97a848d1e11f9c75874ca45",
+  "freshFileOffline": true,
+  "before": {
+    "ready": true,
+    "people": 0,
+    "running": false,
+    "destinations": [
+      ""
+    ],
+    "idleTick": false,
+    "glError": 0
+  },
+  "after": {
+    "people": 0,
+    "running": false,
+    "objects": [
+      {
+        "id": "o-37fceeac-593b-4d3a-968d-fcfb8e777063",
+        "type": "carton"
+      }
+    ],
+    "destinations": [
+      "",
+      "object:o-37fceeac-593b-4d3a-968d-fcfb8e777063"
+    ],
+    "glError": 0
+  },
+  "errors": [],
+  "network": []
+}

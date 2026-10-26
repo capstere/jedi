@@ -1,0 +1,93 @@
+{
+  "schema": "cartridge-strike-private-model-provenance/1",
+  "name": "Counter Analyst cartridge",
+  "version": "11.3",
+  "source": {
+    "repository": "capstere/the",
+    "commit": "890d9e62e133390d74e2415cd02eb920f47c4fad",
+    "path": "cartridge-qc/app/Generisk_Cartridge_QC_v11.3.html",
+    "sha256": "8d471a3cca3c2626820c4a9001d7d52c8a61fea831348b06ab41aafd21384f24",
+    "modelBuildersSha256": "19306c0b15868aaf0825e0c8a6ed28f830924f15a121075932d9bac4aa6fff99"
+  },
+  "reviewedSources": [
+    {
+      "path": "cartridge-qc/README.md",
+      "sha256": "7c78b78d98456adaa52f88c607d5acad256b684aa5f1854472225edefaa7e27e"
+    },
+    {
+      "path": "cartridge-qc/reviews/v11.3/Arkitektur_och_schema.txt",
+      "sha256": "b241cbc2773e239a8a36d0df738e62619922012de274bc2426ba6558df79fc15"
+    },
+    {
+      "path": "cartridge-qc/reviews/v11.3/Granskning_v11.3.txt",
+      "sha256": "579c10497e3ead1743cb5c76e178d39375c8b67177f955303fdcde99c29b79eb"
+    }
+  ],
+  "implementation": [
+    "src/fps/cartridge-v11.mjs",
+    "src/fps/cartridge-props.mjs",
+    "src/fps/models.mjs"
+  ],
+  "reuse": {
+    "method": "Geometry-only Three.js prefab derived from the original createCartridge and addMeasuredV112 builders; not an iframe or reimplementation from photographs.",
+    "preserved": [
+      "Tapered body contour and body/PCR legacy scale",
+      "Curved label surface with replaced Counter Analyst artwork",
+      "13 identified chimney profiles and positions",
+      "Two rear living-hinge groups",
+      "Original 105-degree lid transform at (0,57.12,-16.6116) mm",
+      "Blue foot, retaining slots, integrated rear fork",
+      "PCR profile and diamond aperture"
+    ],
+    "gameAdaptations": [
+      "All buffers converted from millimetres to metres",
+      "Reduced curve, lathe, bevel and line tessellation",
+      "Tiny underside/mould-witness details removed at distance",
+      "Unchanged near buffers (5 shared batches), original v0.7 far retained as mid (2 batches), source-derived far mesh (1 opaque vertex-colour + label-atlas batch)",
+      "Opaque frosted body and simplified PCR surface to avoid stacked transparent layers inside bags",
+      "Shared cached bag clusters and instanced environmental props",
+      "1.35x visual placement scale in bags/environment; nominal prefab dimensions remain metres",
+      "Subtle source Film Seal omitted rather than turned into opaque cap by shared batching",
+      "Actual render-pixel LOD at 56/20 pixels with 18 percent hysteresis; maximum individual projected sample bounds per instancing cell or three-Cartridge bag",
+      "Far geometry uses 4.5 mm vertex clustering of the inherited mid mesh; curved label geometry and outer bounds preserved, tiny cavities simplified below roughly 20 pixels",
+      "Closed/open triangle budgets: near 11620/11620, mid 4182/4182, far 491/586; no reduction to 42 environmental placements or 3 samples per bot bag"
+    ],
+    "notIncluded": [
+      "QC UI",
+      "QC local storage",
+      "Observations",
+      "CSV/JSON import/export",
+      "Source drawings",
+      "Reference photographs",
+      "Qualification reports",
+      "Embedded Three.js bundle",
+      "Original label bitmap"
+    ]
+  },
+  "distribution": {
+    "status": "private-development-only",
+    "publicDistributionApproved": false,
+    "reason": "Owner approved the source-derived Cartridge model and the preceding 0.7 release. This changed visual iteration is deliberately private under the explicit instruction not to merge or publish it.",
+    "requiredBeforePublicRelease": "A separate release decision for this reviewed iteration and its pinned runtime digest. Original QC sources remain excluded.",
+    "precedingRelease": {
+      "version": "0.7",
+      "approvedBy": "Jesper / capstere",
+      "approvedAt": "2026-10-14",
+      "publicRuntimeCommit": "a02e891aaa369d56df8bd9351ccdd9bc48992042"
+    }
+  },
+  "dependencyLicence": {
+    "library": "Three.js",
+    "version": "0.180.0",
+    "licence": "MIT",
+    "scope": "Library only; MIT does not grant rights to the Cartridge model."
+  },
+  "layoutStudioDerivative": {
+    "sourceRepository": "capstere/onboard",
+    "sourceCommit": "6067233c23ba63a04e8d0a8e1ccb7a3adbd62906",
+    "method": "Static closed far geometry extracted at build time; 491 triangles split by inherited material colour. Native metre scale, no Three.js runtime. Ten independent transformed cartridges in a shared bag batch. Label atlas omitted; curved label surface retained with neutral white colour.",
+    "trianglesPerCartridge": 491,
+    "publicDistributionApproved": false,
+    "sourceFileSha256": "ef3a05f033d81afc50a4829aa9bfd97768c797a0b698bb2772373151d6814172"
+  }
+}

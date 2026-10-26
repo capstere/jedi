@@ -1,0 +1,122 @@
+{
+  "version": "2.0.0",
+  "date": "2026-10-20",
+  "room": "Hissrum 12",
+  "sourceFile": "2026-10-20.glb",
+  "sourceTriangles": 533927,
+  "modelTriangles": 15854,
+  "layers": {
+    "base": 12,
+    "floor": 12,
+    "north": 6854,
+    "west": 1958,
+    "east": 1258,
+    "south": 84,
+    "fixed_south": 280,
+    "pier_west": 12,
+    "pier_east": 12,
+    "beam": 24,
+    "ceiling_high": 156,
+    "ceiling_low": 488,
+    "services": 4704
+  },
+  "units": "metres",
+  "glbBytes": 2887244,
+  "bounds": {
+    "west": -3.75,
+    "east": 3.8,
+    "north": -3.8,
+    "south": 3.64
+  },
+  "estimated": true,
+  "width": 7.55,
+  "depth": 7.44,
+  "ceilings": {
+    "liftSide": 3.23,
+    "entrySide": 2.53,
+    "beamUnderside": 2.74,
+    "sideBulkhead": 2.4
+  },
+  "floorReference": {
+    "method": "robust plane fit to near-horizontal low scan triangles",
+    "rawY": "-0.0076959*x - 0.00320914*z - 1.47158569",
+    "notSurveyVerified": true
+  },
+  "fixedObstructions": [
+    {
+      "x1": -2.72,
+      "x2": 1.0,
+      "z1": 3.09,
+      "z2": 3.64,
+      "name": "Inbyggda elskåp"
+    },
+    {
+      "x1": -3.75,
+      "x2": -3.02,
+      "z1": 0.11,
+      "z2": 0.89,
+      "name": "Pelare väster"
+    },
+    {
+      "x1": 3.42,
+      "x2": 3.8,
+      "z1": 0.12,
+      "z2": 0.88,
+      "name": "Pelare öster"
+    }
+  ],
+  "doors": [
+    {
+      "name": "Hiss 12",
+      "side": "north",
+      "center": 1.04,
+      "width": 2.86,
+      "height": 2.82
+    },
+    {
+      "name": "Nödutgång",
+      "side": "north",
+      "center": -1.84,
+      "width": 1.43,
+      "height": 2.18
+    },
+    {
+      "name": "Blå pardörr",
+      "side": "west",
+      "center": 2.245,
+      "width": 2.26,
+      "height": 2.28
+    },
+    {
+      "name": "Entré",
+      "side": "east",
+      "center": 2.375,
+      "width": 1.97,
+      "height": 2.22
+    }
+  ],
+  "omitted": [
+    "Människor och fragment av människor",
+    "Pallar och pallrester",
+    "Sopkärl och avfallspåsar",
+    "Vagnar och rullburar",
+    "Kyl/frys och lös hylla",
+    "Lådor, paket och löst material",
+    "Fristående räcken och möbler"
+  ],
+  "reconstructed": [
+    "Golv och väggar bakom borttagna objekt",
+    "Släta dörrblad med separata beslag och skyltar",
+    "Takplattor i två höjdnivåer",
+    "Balk och pelare",
+    "Inbyggda elskåp",
+    "Fasta rör och armaturer"
+  ],
+  "limitations": [
+    "Skalan har inte kontrollerats med ett verkligt referensmått.",
+    "Väggar och dörrar har rätats upp; lokal skanndrift är inte en byggnadsdetalj.",
+    "Skymda ytor är rekonstruerade, inte fotograferade.",
+    "Skyltar är visuella rekonstruktioner, inte gällande arbetsinstruktioner.",
+    "Modellen är inte underlag för brand-, utrymnings- eller installationsbeslut."
+  ]
+}

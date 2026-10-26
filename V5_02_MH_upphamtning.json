@@ -1,0 +1,168 @@
+{
+  "format": "hissrum12-v5-scenario",
+  "version": 1,
+  "layout": {
+    "format": "hissrum12-v4-layout",
+    "version": 4,
+    "model": "hissrum12-scan-2026-10-20-v2",
+    "name": "V5 02 MH upphamtning",
+    "objects": [
+      {
+        "id": "o-ac5db645-1c79-4fdb-86d5-e7e3f58dc6c3",
+        "type": "creformCart",
+        "name": "CREFORM referensvagn",
+        "w": 0.82,
+        "d": 0.52,
+        "h": 0.95,
+        "x": 3,
+        "y": 0.006,
+        "z": -2.7,
+        "rot": 0,
+        "locked": false,
+        "params": {}
+      },
+      {
+        "id": "o-22fe56aa-d807-4013-b5cc-a00578ba170a",
+        "type": "plasticBoxSmall",
+        "name": "Liten plastlåda",
+        "w": 0.3,
+        "d": 0.4,
+        "h": 0.18,
+        "x": 2.82,
+        "y": 0.726,
+        "z": -2.7,
+        "rot": 0,
+        "locked": false,
+        "params": {},
+        "parentId": "o-ac5db645-1c79-4fdb-86d5-e7e3f58dc6c3",
+        "surfaceId": "shelf-1"
+      },
+      {
+        "id": "o-e7f5aa19-86bb-42f1-a90f-7a9f4dd0cfaf",
+        "type": "plasticBoxSmall",
+        "name": "Liten plastlåda",
+        "w": 0.3,
+        "d": 0.4,
+        "h": 0.18,
+        "x": 3.18,
+        "y": 0.726,
+        "z": -2.7,
+        "rot": 0,
+        "locked": false,
+        "params": {},
+        "parentId": "o-ac5db645-1c79-4fdb-86d5-e7e3f58dc6c3",
+        "surfaceId": "shelf-1"
+      },
+      {
+        "id": "o-4e2e35f0-218e-47e4-8489-22bdf5859faf",
+        "type": "plasticBoxLarge",
+        "name": "Stor plastlåda",
+        "w": 0.59,
+        "d": 0.39,
+        "h": 0.31,
+        "x": 3,
+        "y": 0.226,
+        "z": -2.7,
+        "rot": 0,
+        "locked": false,
+        "params": {},
+        "parentId": "o-ac5db645-1c79-4fdb-86d5-e7e3f58dc6c3",
+        "surfaceId": "shelf-0"
+      },
+      {
+        "id": "o-a4d8a6bc-c423-4899-b34e-ceeb417ae486",
+        "type": "sampleBag",
+        "name": "Sample Point-påse · 10",
+        "w": 0.24,
+        "d": 0.12,
+        "h": 0.09,
+        "x": 2.82,
+        "y": 0.733,
+        "z": -2.7,
+        "rot": 0,
+        "locked": false,
+        "params": {},
+        "parentId": "o-22fe56aa-d807-4013-b5cc-a00578ba170a",
+        "surfaceId": "inside"
+      }
+    ],
+    "tapes": [
+      {
+        "id": "o-bfc88266-fe8b-4bb1-a1cc-44ca82fdd9a2",
+        "name": "IPT SAMPLE POINTS",
+        "style": "blue",
+        "width": 0.05,
+        "dashed": false,
+        "points": [
+          [
+            2.45,
+            -3.1
+          ],
+          [
+            3.55,
+            -3.1
+          ],
+          [
+            3.55,
+            -2.3000000000000003
+          ],
+          [
+            2.45,
+            -2.3000000000000003
+          ],
+          [
+            2.45,
+            -3.1
+          ]
+        ]
+      }
+    ],
+    "keepClear": [],
+    "door": {
+      "angle": 90,
+      "direction": 1
+    },
+    "variants": [],
+    "measures": [],
+    "zones": [],
+    "preferences": {
+      "grid": 0.05,
+      "wallSnap": true,
+      "showDoors": true,
+      "doorDepth": 1,
+      "objectSnap": true
+    }
+  },
+  "simulation": {
+    "format": "hissrum12-v5-simulation",
+    "version": 1,
+    "speed": 1,
+    "chaos": false,
+    "maxPeople": 12,
+    "noGoZoneIds": [],
+    "people": [
+      {
+        "name": "Material Handler",
+        "appearance": "material-handler",
+        "height": 1.75,
+        "mode": "handler",
+        "paused": false,
+        "x": 1.65,
+        "z": -4.45,
+        "yaw": 2.1159447527235824,
+        "destination": {
+          "objectId": "o-ac5db645-1c79-4fdb-86d5-e7e3f58dc6c3"
+        }
+      }
+    ]
+  },
+  "elevator": {
+    "version": 1,
+    "floor": 3,
+    "lights": true,
+    "sound": false
+  },
+  "display": {
+    "quality": "auto"
+  }
+}

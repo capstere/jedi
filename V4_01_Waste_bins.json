@@ -1,0 +1,155 @@
+{
+  "format": "hissrum12-v4-layout",
+  "version": 4,
+  "model": "hissrum12-scan-2026-10-20-v2",
+  "name": "Tre waste-bin-pallplatser",
+  "objects": [
+    {
+      "id": "o-43a4d5f2-ad1d-43a0-b5ed-89246b1d6ae2",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "x": -3,
+      "y": 0.006,
+      "z": -2.9,
+      "rot": 90,
+      "locked": false,
+      "params": {}
+    },
+    {
+      "id": "o-e328f22d-351c-4799-aacf-f03f0daaf4b8",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "x": -3,
+      "y": 0.006,
+      "z": -1.5,
+      "rot": 90,
+      "locked": false,
+      "params": {}
+    },
+    {
+      "id": "o-0b2c45dc-8b56-4c7a-88fd-f4c80e5c57cc",
+      "type": "palletBins",
+      "name": "Pall med 4 kärl",
+      "w": 1.2,
+      "d": 0.8,
+      "h": 0.94,
+      "x": -3,
+      "y": 0.006,
+      "z": -0.1,
+      "rot": 90,
+      "locked": false,
+      "params": {}
+    }
+  ],
+  "tapes": [
+    {
+      "id": "o-4212c4e9-732d-45a7-9448-345f841a7476",
+      "name": "Waste bins",
+      "style": "yellow",
+      "width": 0.05,
+      "dashed": false,
+      "points": [
+        [
+          -3.5,
+          -3.55
+        ],
+        [
+          -2.5,
+          -3.55
+        ],
+        [
+          -2.5,
+          -2.25
+        ],
+        [
+          -3.5,
+          -2.25
+        ],
+        [
+          -3.5,
+          -3.55
+        ]
+      ]
+    },
+    {
+      "id": "o-8bd5e36c-1da4-4dd9-ab79-11881344f165",
+      "name": "Waste bins",
+      "style": "yellow",
+      "width": 0.05,
+      "dashed": false,
+      "points": [
+        [
+          -3.5,
+          -2.15
+        ],
+        [
+          -2.5,
+          -2.15
+        ],
+        [
+          -2.5,
+          -0.85
+        ],
+        [
+          -3.5,
+          -0.85
+        ],
+        [
+          -3.5,
+          -2.15
+        ]
+      ]
+    },
+    {
+      "id": "o-52372cd5-58c4-4972-923f-917943d31dfc",
+      "name": "Waste bins",
+      "style": "yellow",
+      "width": 0.05,
+      "dashed": false,
+      "points": [
+        [
+          -3.5,
+          -0.75
+        ],
+        [
+          -2.5,
+          -0.75
+        ],
+        [
+          -2.5,
+          0.55
+        ],
+        [
+          -3.5,
+          0.55
+        ],
+        [
+          -3.5,
+          -0.75
+        ]
+      ]
+    }
+  ],
+  "keepClear": [],
+  "door": {
+    "angle": 0,
+    "direction": 1,
+    "showSweep": true
+  },
+  "variants": [],
+  "measures": [],
+  "zones": [],
+  "preferences": {
+    "grid": 0.05,
+    "wallSnap": true,
+    "showDoors": true,
+    "doorDepth": 1,
+    "objectSnap": true
+  }
+}

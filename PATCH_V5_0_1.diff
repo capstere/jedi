@@ -1,0 +1,84 @@
+--- a/Hissrum12_3D_Layout_Planner_V5/source/simulation-ui.js
++++ b/Hissrum12_3D_Layout_Planner_V5/source/simulation-ui.js
+@@ -57,16 +57,40 @@
+  function drawPeople(vp){if(state.mode==='plan')return;renderer.draw([...sim.people,...(ghost?[ghost]:[])],{vp,eye:state.eye,quality:quality==='auto'&&adaptiveLow?'low':quality,selectedId});}
+  function togglePhoto(value=!photo){photo=!!value;if(photo){photoWasRunning=sim.running;sim.pause();cancel();selectedId=null;}else if(photoWasRunning)sim.start();document.body.classList.toggle('photo-mode',photo);$('exitPhoto').hidden=!photo;$('photoSavePNG').hidden=!photo;invalidate();}
+  function exportScenario(includeLayout=false){const config=sim.exportConfig();return{format:'hissrum12-v5-scenario',version:1,simulation:config,elevator:elevator.snapshot(),...(includeLayout?{layout:planner.snapshot()}:{}),display:{quality}};}
+- function importScenario(value){if(value.format==='hissrum12-v5-simulation'){sim.importConfig(value);refresh(true);invalidate();return;}
+-  if(value.format!=='hissrum12-v5-scenario'||value.version!==1||!value.simulation)throw Error('Okänt scenarioschema.');const layout=value.layout?C.validate(value.layout,api.info):null;
+-  // Validate both inputs before touching furniture. Core import is atomic.
+-  const probe=PeopleSimulation.create({info:api.info,getLayout:()=>layout||planner.snapshot(),getDoor:()=>door.snapshot(),getElevator:()=>FreightElevatorGeometry});probe.importConfig(value.simulation);
+-  if(layout)planner.restore(value.layout,true);sim.importConfig(value.simulation);elevator.restore(value.elevator||{});selectedId=null;followId=null;cancel();refresh(true);invalidate();
++ function setQuality(value){
++  if(!['auto','low','high'].includes(value))throw Error('Ogiltig grafiknivå. Välj Automatisk, Låg eller Hög.');
++  quality=value;adaptiveLow=false;frameAverage=0;$('simQuality').value=quality;invalidate();
++ }
++ function importScenario(value){
++  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Okänt scenarioschema.');
++  if(value.format==='hissrum12-v5-simulation'){sim.importConfig(value);refresh(true);invalidate();return;}
++  if(value.format!=='hissrum12-v5-scenario'||value.version!==1||!value.simulation)throw Error('Okänt scenarioschema.');
++  const layout=value.layout?C.validate(value.layout,api.info):null;
++  let incomingQuality=quality;
++  if(value.display!==undefined){
++   if(!value.display||typeof value.display!=='object'||Array.isArray(value.display))throw Error('Ogiltiga visningsinställningar.');
++   if(value.display.quality!==undefined){
++    if(!['auto','low','high'].includes(value.display.quality))throw Error('Ogiltig grafiknivå i scenariot.');
++    incomingQuality=value.display.quality;
++   }
++  }
++  // Preflight the state that will actually be imported, BEFORE changing the
++  // current layout. Using the current door with incoming furniture could reject
++  // valid scenarios or approve one that then fails after replacing furniture.
++  // Legacy annotation-only imports preserve furniture and door, just as restore.
++  const currentLayout=planner.snapshot();
++  const targetLayout=layout?.legacy?{...currentLayout,measures:layout.measures,zones:layout.zones}:layout||currentLayout;
++  const targetDoor=layout&&!layout.legacy?layout.door:{...door.snapshot(),angle:door.degrees};
++  const probe=PeopleSimulation.create({info:api.info,getLayout:()=>targetLayout,getDoor:()=>targetDoor,getElevator:()=>FreightElevatorGeometry});
++  probe.importConfig(value.simulation);
++  if(layout)planner.restore(value.layout,true);
++  sim.importConfig(value.simulation);elevator.restore(value.elevator||{});
++  setQuality(incomingQuality);selectedId=null;followId=null;cancel();refresh(true);invalidate();
+  }
+  function installCatalog(){const category='SIMULATION → PEOPLE';$('catalogCategory').append(new Option(category,category));for(const v of variants){const b=element('button','object-card person-card');b.dataset.person=v.id;b.dataset.category=category;b.dataset.search=v.label+' simulation people person människa';const canvas=document.createElement('canvas');renderer.thumbnail(canvas,v.id);b.append(canvas,element('strong','',v.label),element('small','',Math.round(v.height*100)+' cm · separat simulering'));b.onclick=()=>beginPlace(v.id);b.draggable=true;b.ondragstart=e=>{beginPlace(v.id);e.dataTransfer.setData('application/x-hissrum-person',v.id);};$('objectCatalog').append(b);const card=b.cloneNode(true);const cv=card.querySelector('canvas');renderer.thumbnail(cv,v.id);card.draggable=false;card.onclick=()=>beginPlace(v.id);$('peopleCatalog').append(card);}
+   $('catalogSearch').dispatchEvent(new Event('input'));host.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('application/x-hissrum-person'))e.preventDefault();});host.addEventListener('drop',e=>{const id=e.dataTransfer.getData('application/x-hissrum-person');if(!byVariant.has(id))return;e.preventDefault();const f=floorAt(e);if(f&&sim.isFree(f.x,f.z)){const v=byVariant.get(id),p=sim.add({appearance:id,height:v.height,x:f.x,z:f.z,mode:id==='material-handler'?'handler':'roam'});if(p){cancel();select(p.id);}}});
+  }
+- on('simStart',()=>{sim.start();refresh();invalidate();});on('simPause',()=>{sim.pause();refresh();invalidate();});on('simReset',()=>{sim.reset();followId=null;refresh(true);invalidate();});$('simSpeed').onchange=e=>sim.setSpeed(Number(e.target.value));$('simLimit').onchange=e=>{sim.maxPeople=Number(e.target.value);if(sim.people.length>sim.maxPeople)toast('Gränsen gäller nya personer. Ta bort personer för att minska nuvarande antal.');};$('simQuality').onchange=e=>{quality=e.target.value;invalidate();};
++ on('simStart',()=>{sim.start();refresh();invalidate();});on('simPause',()=>{sim.pause();refresh();invalidate();});on('simReset',()=>{sim.reset();followId=null;refresh(true);invalidate();});$('simSpeed').onchange=e=>sim.setSpeed(Number(e.target.value));$('simLimit').onchange=e=>{sim.maxPeople=Number(e.target.value);if(sim.people.length>sim.maxPeople)toast('Gränsen gäller nya personer. Ta bort personer för att minska nuvarande antal.');};$('simQuality').onchange=e=>setQuality(e.target.value);
+  for(const v of variants)$('personAppearance').append(new Option(v.label,v.id));
+  for(const [id,key,read]of[['personName','name',el=>el.value],['personAppearance','appearance',el=>el.value],['personHeight','height',el=>Number(el.value)/100],['personMode','mode',el=>el.value],['personPaused','paused',el=>el.checked]])$(id).onchange=e=>{if(selectedId)sim.update(selectedId,{[key]:read(e.target)});refresh(true);invalidate();};
+  for(const id of['personX','personZ'])$(id).onchange=()=>{if(selectedId)sim.move(selectedId,Number($('personX').value),Number($('personZ').value));refresh(true);invalidate();};
+--- a/Hissrum12_3D_Layout_Planner_V5/source/template.html
++++ b/Hissrum12_3D_Layout_Planner_V5/source/template.html
+@@ -1,6 +1,6 @@
+-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Hissrum 12 — Life Simulation V5</title><style>__CSS__</style></head><body>
++<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>Hissrum 12 — Life Simulation V5.0.1</title><style>__CSS__</style></head><body>
+ <div id="app">
+-<header class="topbar"><div class="brand"><button id="menuButton" class="icon" title="Visa inställningar" aria-label="Visa inställningar"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="brand-mark">12</div><div><div class="brand-line">HISSRUM 12</div><div class="brand-sub">LAYOUT STUDIO / SOLNA</div></div></div><div class="top-meta"><div class="local-badge"><i></i>Lokalt · ingen uppladdning</div><div class="version">V5 / LIFE SIMULATION</div><div class="top-actions"><button id="saveImage" class="text-button" title="Spara bilden"><svg viewBox="0 0 24 24"><path d="M8 5 6 8H3v12h18V8h-3l-2-3Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Spara bild</span></button><button id="saveGLB" class="text-button" title="Exportera rummet med alla placerade objekt som GLB"><svg viewBox="0 0 24 24"><path d="M12 3v11m-4-4 4 4 4-4M5 16v5h14v-5"/></svg><span>3D med objekt</span></button><button id="fullscreen" class="icon" title="Helskärm" aria-label="Helskärm"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div></header>
++<header class="topbar"><div class="brand"><button id="menuButton" class="icon" title="Visa inställningar" aria-label="Visa inställningar"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="brand-mark">12</div><div><div class="brand-line">HISSRUM 12</div><div class="brand-sub">LAYOUT STUDIO / SOLNA</div></div></div><div class="top-meta"><div class="local-badge"><i></i>Lokalt · ingen uppladdning</div><div class="version">V5.0.1 / LIFE SIMULATION</div><div class="top-actions"><button id="saveImage" class="text-button" title="Spara bilden"><svg viewBox="0 0 24 24"><path d="M8 5 6 8H3v12h18V8h-3l-2-3Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Spara bild</span></button><button id="saveGLB" class="text-button" title="Exportera rummet med alla placerade objekt som GLB"><svg viewBox="0 0 24 24"><path d="M12 3v11m-4-4 4 4 4-4M5 16v5h14v-5"/></svg><span>3D med objekt</span></button><button id="fullscreen" class="icon" title="Helskärm" aria-label="Helskärm"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div></header>
+ <aside class="sidebar planner-sidebar"><button id="closePanel" class="icon" aria-label="Stäng panel">×</button>
+ <div class="planner-intro"><p class="eyebrow">HISSRUM 12 / PLANERINGSVERKTYG</p><h1>Låt rummet<br><strong>leva.</strong></h1><p>Möblera, starta livet i rummet och utforska flödet. Allt stannar på din dator.</p></div>
+ <div class="planner-tabs" role="tablist" aria-label="Planeringspaneler"><button data-panel="objects" class="active" role="tab" aria-selected="true">Objekt</button><button data-panel="studio" role="tab" aria-selected="false">5S & bygg</button><button data-panel="layouts" role="tab" aria-selected="false">Layouter</button><button data-panel="simulation" role="tab" aria-selected="false">Simulation</button><button data-panel="room" role="tab" aria-selected="false">Rum & mått</button></div>
+--- a/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs
++++ b/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs
+@@ -7,7 +7,8 @@
+ const playwright=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+ const project=path.resolve(__dirname,'..'),output=process.env.SMOKE_OUTPUT||path.join(__dirname,'artifacts-v5');fs.mkdirSync(output,{recursive:true});
+ const html=path.join(project,'STARTA_HISSRUM_12_V5.html'),only=process.argv.find(v=>v.startsWith('--only='))?.slice(7).split(',');
+-const report={startedAt:new Date().toISOString(),fileProtocol:true,networkDisabled:true,results:[],consoleErrors:[],pageErrors:[],networkRequests:[],notes:['Chrome headless file:// in an offline browser context. Synthetic elapsed simulation ticks speed up behaviour checks. Frame timing includes gl.finish on this machine and is not a general hardware guarantee.']};
++const inline=process.env.SMOKE_LOAD_MODE==='inline',headless=process.env.SMOKE_HEADLESS!=='0';
++const report={startedAt:new Date().toISOString(),fileProtocol:!inline,loadMode:inline?'inline-built-html':'file://',headless,networkDisabled:true,results:[],consoleErrors:[],pageErrors:[],networkRequests:[],notes:[(inline?'Complete built HTML loaded inline; file:// and persistent localStorage are not verified in this fallback.':'Built HTML opened via file://.')+' Offline browser context; '+(headless?'headless':'headed')+'. Synthetic elapsed ticks speed up behaviour checks. Frame timing includes gl.finish and is not a general hardware guarantee.']};
+ let browser,context,page;
+ const near=(a,b,e=.02)=>assert(Math.abs(a-b)<=e,`${a} expected ${b} ± ${e}`);
+ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+@@ -24,9 +25,9 @@
+ async function scenario(name,fn){if(only&&!only.includes(name))return;const start=Date.now(),entry={name};try{entry.details=await fn();entry.status='passed';}catch(e){entry.status='failed';entry.error=e.stack||String(e);console.error(name+': '+e.message);if(page)try{await page.screenshot({path:path.join(output,'FAIL_'+name+'.png')});}catch(_){}}entry.elapsedMs=Date.now()-start;report.results.push(entry);write();console.log(name+': '+entry.status);}
+ (async()=>{
+  report.htmlSha256=crypto.createHash('sha256').update(fs.readFileSync(html)).digest('hex');report.htmlBytes=fs.statSync(html).size;
+- browser=await playwright.chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader']});report.browser=await browser.version();context=await browser.newContext({viewport:{width:1600,height:1000},acceptDownloads:true});await context.setOffline(true);page=await context.newPage();page.setDefaultTimeout(7000);
++ browser=await playwright.chromium.launch({headless,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader',...(process.env.SMOKE_SOFTWARE_GL==='1'?['--use-gl=angle','--use-angle=swiftshader','--disable-dev-shm-usage']:[])]});report.browser=await browser.version();context=await browser.newContext({viewport:{width:1600,height:1000},acceptDownloads:true});await context.setOffline(true);page=await context.newPage();page.setDefaultTimeout(Number(process.env.SMOKE_TIMEOUT)||7000);
+  page.on('pageerror',e=>report.pageErrors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.consoleErrors.push(m.text());});page.on('request',r=>{if(/^https?:/.test(r.url()))report.networkRequests.push(r.url());});
+- await page.goto(pathToFileURL(html).href);await page.waitForFunction(()=>window.APP_READY===true,null,{timeout:30000});
++ if(inline)await page.setContent(fs.readFileSync(html,'utf8'));else await page.goto(pathToFileURL(html).href);await page.waitForFunction(()=>window.APP_READY===true,null,{timeout:30000});
+  report.initial=await page.evaluate(()=>({objects:HISSRUM.planner.objects.length,people:HISSRUM.simulation.people.length,running:HISSRUM.simulation.running,chaos:HISSRUM.simulation.chaos,catalog:LayoutCore.CATALOG.length,glError:HISSRUM.gl.getError(),renderer:HISSRUM.gl.getParameter(HISSRUM.gl.RENDERER)}));
+  assert.equal(report.initial.objects,0);assert.equal(report.initial.people,0);assert.equal(report.initial.running,false);assert.equal(report.initial.chaos,false);assert.equal(report.initial.catalog,26);assert.equal(report.initial.glError,0);
+  await scenario('v4_preserved',async()=>{

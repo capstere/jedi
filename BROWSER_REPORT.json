@@ -1,0 +1,249 @@
+{
+  "startedAt": "2026-10-20T17:35:19.341Z",
+  "fileProtocol": true,
+  "networkDisabled": true,
+  "results": [
+    {
+      "name": "v4_preserved",
+      "details": {
+        "catalog26": true,
+        "dragRotateResize": true,
+        "undoRedo": true,
+        "nestedCart": true,
+        "wallMount": true,
+        "tapeDraw": true,
+        "builder": true,
+        "jsonImport": true,
+        "v3Compatibility": true,
+        "glbBytes": 3987968,
+        "png": true
+      },
+      "status": "passed",
+      "elapsedMs": 1629,
+      "testedHtmlSha256": "b16e07206e3111c152d92fd083c1774982b9c21fa840c920fc4964334fbd7788"
+    },
+    {
+      "name": "elevator",
+      "details": {
+        "originalTriangles": 15854,
+        "movingTriangles": 2528,
+        "cabinTriangles": 2116,
+        "portal": true,
+        "left": false,
+        "enteredCabin": [
+          1.65,
+          1.65,
+          -4.175049999999999
+        ],
+        "floor": 5,
+        "closedPortal": true,
+        "bothDirections": true
+      },
+      "status": "passed",
+      "elapsedMs": 5255,
+      "testedHtmlSha256": "b16e07206e3111c152d92fd083c1774982b9c21fa840c920fc4964334fbd7788"
+    },
+    {
+      "name": "people_controls",
+      "details": {
+        "catalogPlacement": 3,
+        "distinctAppearances": 3,
+        "appearanceHeightMode": true,
+        "individualPause": true,
+        "duplicateDelete": true,
+        "speed": 2,
+        "walking": [
+          {
+            "id": "npc-1",
+            "distance": 19.00790020629659,
+            "phaseDelta": 35.99999999999931,
+            "paused": false
+          },
+          {
+            "id": "npc-2",
+            "distance": 17.78369586191671,
+            "phaseDelta": 35.99999999999935,
+            "paused": false
+          },
+          {
+            "id": "npc-3",
+            "distance": 0,
+            "phaseDelta": 0,
+            "paused": true
+          }
+        ],
+        "globalPause": true,
+        "resetStarts": true,
+        "followCamera": true,
+        "clips": {
+          "idleAnimated": true,
+          "walkAnimated": true,
+          "skinJoints": 7
+        }
+      },
+      "status": "passed",
+      "elapsedMs": 521,
+      "testedHtmlSha256": "b16e07206e3111c152d92fd083c1774982b9c21fa840c920fc4964334fbd7788"
+    },
+    {
+      "name": "navigation_updates",
+      "details": {
+        "directBefore": 1,
+        "routeAfter": 3,
+        "blocked": true,
+        "recomputed": true,
+        "invalid": 0,
+        "jumps": 0,
+        "distance": 6.53993871243569
+      },
+      "status": "passed",
+      "elapsedMs": 17,
+      "testedHtmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5"
+    },
+    {
+      "name": "persistence_isolation",
+      "details": {
+        "plannerUnchanged": true,
+        "separateConfig": true,
+        "startPositionSaved": true,
+        "temporaryStateExcluded": true,
+        "importPaused": true,
+        "layoutFurnitureOnly": true
+      },
+      "status": "passed",
+      "elapsedMs": 417,
+      "testedHtmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5"
+    },
+    {
+      "name": "material_handler",
+      "details": {
+        "missingDestinationMessage": "Material Handler tillagd. Välj destination och öppna hissen.",
+        "stage": "complete",
+        "delivered": 4,
+        "props": [
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          }
+        ],
+        "invalid": 0,
+        "steps": 44,
+        "distance": 10.72925627742831,
+        "position": [
+          1.638079624663204,
+          -4.409759109198659
+        ],
+        "layoutCount": 1
+      },
+      "status": "passed",
+      "elapsedMs": 191,
+      "testedHtmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5"
+    },
+    {
+      "name": "chaos_heatmap",
+      "details": {
+        "steps": 4,
+        "props": 1,
+        "temporary": true,
+        "heatCells": 29,
+        "stats": {
+          "distance": 5.139682260808854,
+          "waitTime": 4.260869565217389,
+          "elapsed": 4.000000000000007,
+          "people": 3,
+          "delivered": 0,
+          "blocked": 0,
+          "navCells": 1517,
+          "navVersion": 13
+        },
+        "visible": true,
+        "chaos": true,
+        "pauseCollection": true,
+        "resetClearsTemporaryAndHeatmap": true,
+        "layoutUnchanged": true
+      },
+      "status": "passed",
+      "elapsedMs": 439,
+      "testedHtmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5"
+    },
+    {
+      "name": "performance12",
+      "details": {
+        "people": 12,
+        "objects": 3,
+        "renderMedianMs": 0.30000001192092896,
+        "renderP95Ms": 0.3999999761581421,
+        "simulationMedianMs": 0,
+        "sampleCount": 24,
+        "diagnostics": {
+          "drawn": 12,
+          "culled": 0,
+          "lod": 12,
+          "triangles": 7532,
+          "frames": 50,
+          "meshResources": 3,
+          "buffers": 16,
+          "poseCaches": 12,
+          "source": "Kenney Mini Characters 1.0 / CC0",
+          "skinJoints": 7
+        },
+        "glError": 0
+      },
+      "status": "passed",
+      "elapsedMs": 515,
+      "testedHtmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "networkRequests": [],
+  "notes": [
+    "Chrome headless file:// in an offline browser context. Synthetic elapsed simulation ticks speed up behaviour checks. Frame timing includes gl.finish on this machine and is not a general hardware guarantee.",
+    "First three scenarios passed on the earlier V5 build before closed tape zones were added as valid simulation destinations. Remaining scenarios used the updated build. Each result records its tested HTML hash."
+  ],
+  "htmlSha256": "baf36cae35e5e8eb55e99df24406d0057fa9d9b8355b44b880b2116907e4e4d5",
+  "htmlBytes": 4526003,
+  "browser": "155.0.8059.85",
+  "initial": {
+    "objects": 0,
+    "people": 0,
+    "running": false,
+    "chaos": false,
+    "catalog": 26,
+    "glError": 0,
+    "renderer": "WebKit WebGL"
+  },
+  "finishedAt": "2026-10-20T17:36:53.551Z",
+  "status": "passed",
+  "focusedRetries": {
+    "reason": "Harness corrections only: open collapsed scenario details before download; await download and click together; record route length before movement consumes the same path array; allow more than the 0.25-second navigation refresh interval.",
+    "rerunScenarios": [
+      "navigation_updates",
+      "persistence_isolation",
+      "material_handler",
+      "chaos_heatmap",
+      "performance12"
+    ],
+    "productFixesRequired": []
+  }
+}

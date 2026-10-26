@@ -1,0 +1,62 @@
+{
+  "fileProtocol": "file:",
+  "full": {
+    "drawn": 4,
+    "culled": 0,
+    "lod": 0,
+    "triangles": 2977,
+    "frames": 1,
+    "meshResources": 4,
+    "buffers": 21,
+    "poseCaches": 4,
+    "source": "Kenney Mini Characters 1.0 / CC0",
+    "skinJoints": 7
+  },
+  "low": {
+    "drawn": 4,
+    "culled": 0,
+    "lod": 4,
+    "triangles": 2477,
+    "frames": 2,
+    "meshResources": 8,
+    "buffers": 41,
+    "poseCaches": 4,
+    "source": "Kenney Mini Characters 1.0 / CC0",
+    "skinJoints": 7
+  },
+  "culled": {
+    "drawn": 0,
+    "culled": 4,
+    "lod": 0,
+    "triangles": 0,
+    "frames": 3,
+    "meshResources": 8,
+    "buffers": 41,
+    "poseCaches": 4,
+    "source": "Kenney Mini Characters 1.0 / CC0",
+    "skinJoints": 7
+  },
+  "maxJointMotion": 0.8148861527442932,
+  "coloredPixels": 50231,
+  "performance12": {
+    "frames": 90,
+    "totalMs": 6.199999988079071,
+    "msPerFrame": 0.06888888875643412,
+    "stats": {
+      "drawn": 12,
+      "culled": 0,
+      "lod": 10,
+      "triangles": 7669,
+      "frames": 93,
+      "meshResources": 8,
+      "buffers": 41,
+      "poseCaches": 12,
+      "source": "Kenney Mini Characters 1.0 / CC0",
+      "skinJoints": 7
+    }
+  },
+  "glError": 0,
+  "errors": [],
+  "network": [],
+  "browser": "155.0.8059.85"
+}

@@ -1,0 +1,191 @@
+{
+  "startedAt": "2026-10-20T18:25:15.490Z",
+  "fileProtocol": false,
+  "loadMode": "inline-built-html",
+  "headless": false,
+  "networkDisabled": true,
+  "results": [
+    {
+      "name": "v4_preserved",
+      "details": {
+        "catalog26": true,
+        "dragRotateResize": true,
+        "undoRedo": true,
+        "nestedCart": true,
+        "wallMount": true,
+        "tapeDraw": true,
+        "builder": true,
+        "jsonImport": true,
+        "v3Compatibility": true,
+        "glbBytes": 3987848,
+        "png": true
+      },
+      "status": "passed",
+      "elapsedMs": 12116
+    },
+    {
+      "name": "elevator",
+      "details": {
+        "originalTriangles": 15854,
+        "movingTriangles": 2528,
+        "cabinTriangles": 2116,
+        "portal": true,
+        "left": false,
+        "enteredCabin": [
+          1.65,
+          1.65,
+          -4.20505
+        ],
+        "floor": 5,
+        "closedPortal": true,
+        "bothDirections": true
+      },
+      "status": "passed",
+      "elapsedMs": 9167
+    },
+    {
+      "name": "people_controls",
+      "details": {
+        "catalogPlacement": 3,
+        "distinctAppearances": 3,
+        "appearanceHeightMode": true,
+        "individualPause": true,
+        "duplicateDelete": true,
+        "speed": 2,
+        "walking": [
+          {
+            "id": "npc-1",
+            "distance": 15.785397499157877,
+            "phaseDelta": 35.99999999999937,
+            "paused": false
+          },
+          {
+            "id": "npc-2",
+            "distance": 20.480199690962163,
+            "phaseDelta": 35.99999999999933,
+            "paused": false
+          },
+          {
+            "id": "npc-3",
+            "distance": 0,
+            "phaseDelta": 0,
+            "paused": true
+          }
+        ],
+        "globalPause": true,
+        "resetStarts": true,
+        "followCamera": true,
+        "clips": {
+          "idleAnimated": true,
+          "walkAnimated": true,
+          "skinJoints": 7
+        }
+      },
+      "status": "passed",
+      "elapsedMs": 4800
+    },
+    {
+      "name": "navigation_updates",
+      "details": {
+        "directBefore": 1,
+        "routeAfter": 3,
+        "blocked": true,
+        "recomputed": true,
+        "invalid": 0,
+        "jumps": 0,
+        "distance": 9.085606306135317
+      },
+      "status": "passed",
+      "elapsedMs": 19
+    },
+    {
+      "name": "persistence_isolation",
+      "details": {
+        "plannerUnchanged": true,
+        "separateConfig": true,
+        "startPositionSaved": true,
+        "temporaryStateExcluded": true,
+        "importPaused": true,
+        "layoutFurnitureOnly": true
+      },
+      "status": "passed",
+      "elapsedMs": 3193
+    },
+    {
+      "name": "material_handler",
+      "details": {
+        "missingDestinationMessage": "Material Handler tillagd. Välj destination och öppna hissen.",
+        "stage": "complete",
+        "delivered": 4,
+        "props": [
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          },
+          {
+            "type": "sampleBag",
+            "source": "handler",
+            "temporary": true,
+            "y": 0.23
+          }
+        ],
+        "invalid": 0,
+        "steps": 47,
+        "distance": 10.6678952227543,
+        "position": [
+          1.6349137615568186,
+          -4.400397904749024
+        ],
+        "layoutCount": 1
+      },
+      "status": "passed",
+      "elapsedMs": 1627
+    },
+    {
+      "name": "chaos_heatmap",
+      "status": "failed",
+      "error": "locator.click: Target page, context or browser has been closed\nCall log:\n  - waiting for locator('#peopleCatalog [data-person=\"colleague-b\"]')\n    - locator resolved to <button draggable=\"false\" data-person=\"colleague-b\" class=\"object-card person-card\" data-category=\"SIMULATION → PEOPLE\" data-search=\"Kollega · vardagskläder simulation people person människa\">…</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n\n    at person (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:21:162)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:79:228\n    at async scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:25:125)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:78:2",
+      "elapsedMs": 1128
+    },
+    {
+      "name": "performance12",
+      "status": "failed",
+      "error": "page.evaluate: Target page, context or browser has been closed\n    at reset (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:22:35)\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:84:9\n    at scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:25:131)\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5.cjs:83:8",
+      "elapsedMs": 1
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "networkRequests": [],
+  "notes": [
+    "Complete built HTML loaded inline; file:// and persistent localStorage are not verified in this fallback. Offline browser context; headed. Synthetic elapsed ticks speed up behaviour checks. Frame timing includes gl.finish and is not a general hardware guarantee."
+  ],
+  "htmlSha256": "afb8eee42396c5a787c4233a22abb4cc88de7ff3cbaa79814cf0f8ea39bb01d0",
+  "htmlBytes": 4527958,
+  "browser": "144.0.7559.96",
+  "initial": {
+    "objects": 0,
+    "people": 0,
+    "running": false,
+    "chaos": false,
+    "catalog": 26,
+    "glError": 0,
+    "renderer": "WebKit WebGL"
+  },
+  "finishedAt": "2026-10-20T18:25:50.165Z",
+  "status": "failed"
+}

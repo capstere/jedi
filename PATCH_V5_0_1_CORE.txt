@@ -1,0 +1,234 @@
+TAP version 13
+# Subtest: Eight library types; all finite meshes inside configurable outer envelope
+ok 1 - Eight library types; all finite meshes inside configurable outer envelope
+  ---
+  duration_ms: 49.892077
+  type: 'test'
+  ...
+# Subtest: Rectangle overlap respects touch and rotated separation
+ok 2 - Rectangle overlap respects touch and rotated separation
+  ---
+  duration_ms: 0.614113
+  type: 'test'
+  ...
+# Subtest: Rotated containment and grid/wall snapping
+ok 3 - Rotated containment and grid/wall snapping
+  ---
+  duration_ms: 0.465099
+  type: 'test'
+  ...
+# Subtest: Collision detects doors, fixed parts, out of bounds, tall objects and pair overlap
+ok 4 - Collision detects doors, fixed parts, out of bounds, tall objects and pair overlap
+  ---
+  duration_ms: 1.479725
+  type: 'test'
+  ...
+# Subtest: Oblique picking and true object transform share coordinate convention
+ok 5 - Oblique picking and true object transform share coordinate convention
+  ---
+  duration_ms: 0.349074
+  type: 'test'
+  ...
+# Subtest: JSON validation round trip and V2 legacy annotations
+ok 6 - JSON validation round trip and V2 legacy annotations
+  ---
+  duration_ms: 0.49217
+  type: 'test'
+  ...
+# Subtest: Reject malformed coordinates, unknown types, duplicates, wrong model and excessive files
+ok 7 - Reject malformed coordinates, unknown types, duplicates, wrong model and excessive files
+  ---
+  duration_ms: 0.547803
+  type: 'test'
+  ...
+# {
+#   totalTriangles: 15854,
+#   movingTriangles: 2528,
+#   movingMeshes: [
+#     [ 'north__liftblue', 48 ],
+#     [ 'north__aluminium', 12 ],
+#     [ 'north__glass', 2 ],
+#     [ 'north__steel', 2448 ],
+#     [ 'north__white', 12 ],
+#     [ 'north__sign_freight', 2 ],
+#     [ 'north__sign_lift_instruction', 2 ],
+#     [ 'north__sign_stop', 2 ]
+#   ],
+#   exportStaticPose: true,
+#   unchangedFixedVertices: true
+# }
+# Subtest: tests/door.test.cjs
+ok 2 - tests/door.test.cjs
+  ---
+  duration_ms: 169.784167
+  type: 'test'
+  ...
+# {"cabinTriangles":2116,"materialBatches":16,"portalBothDirections":true,"visualTravel":true,"originalWallOpening":true,"originalDoorReused":true}
+# Subtest: tests/elevator.test.cjs
+ok 3 - tests/elevator.test.cjs
+  ---
+  duration_ms: 69.051632
+  type: 'test'
+  ...
+# PASS geometry-v4: 26 catalogue models, finite buffers/extents, reference cart, exact 10 cartridges, parameters and transform cache contract.
+# Subtest: tests/geometry-v4.test.cjs
+ok 4 - tests/geometry-v4.test.cjs
+  ---
+  duration_ms: 280.421766
+  type: 'test'
+  ...
+# PASS: 4 CC0 models; full/LOD buffers; 7 retained source clips; articulated idle/walk and finite scale-preserving skin poses.
+# Subtest: tests/npc-assets.test.cjs
+ok 5 - tests/npc-assets.test.cjs
+  ---
+  duration_ms: 53.105413
+  type: 'test'
+  ...
+# V5 CPU simulation benchmark: 12 NPCs, 60 simulated seconds, 581.2 ms total (not a GPU benchmark).
+# Subtest: clearance grid routes around rotated equipment without corner cutting
+ok 12 - clearance grid routes around rotated equipment without corner cutting
+  ---
+  duration_ms: 13.981317
+  type: 'test'
+  ...
+# Subtest: cabin is connected only through the open existing right door
+ok 13 - cabin is connected only through the open existing right door
+  ---
+  duration_ms: 34.662273
+  type: 'test'
+  ...
+# Subtest: 12 independent people stay clear of furniture and each other at 4×
+ok 14 - 12 independent people stay clear of furniture and each other at 4×
+  ---
+  duration_ms: 595.620608
+  type: 'test'
+  ...
+# Subtest: changed layout invalidates navigation and trapped people wait instead of teleporting
+ok 15 - changed layout invalidates navigation and trapped people wait instead of teleporting
+  ---
+  duration_ms: 3.131708
+  type: 'test'
+  ...
+# Subtest: opposing people yield and clear an 80 cm corridor without permanent deadlock
+ok 16 - opposing people yield and clear an 80 cm corridor without permanent deadlock
+  ---
+  duration_ms: 31.204947
+  type: 'test'
+  ...
+# Subtest: MH waits for target and door, delivers four transient V4 bags, then returns
+ok 17 - MH waits for target and door, delivers four transient V4 bags, then returns
+  ---
+  duration_ms: 17.940337
+  type: 'test'
+  ...
+# Subtest: no-go zones, chaos props, pause and heatmap stay independent of layout saving
+ok 18 - no-go zones, chaos props, pause and heatmap stay independent of layout saving
+  ---
+  duration_ms: 167.835438
+  type: 'test'
+  ...
+# Subtest: closed floor-tape zones are destinations and no-go areas; open tape is not
+ok 19 - closed floor-tape zones are destinations and no-go areas; open tape is not
+  ---
+  duration_ms: 8.66797
+  type: 'test'
+  ...
+# Subtest: explicit configuration saves starts only; invalid import preserves current people
+ok 20 - explicit configuration saves starts only; invalid import preserves current people
+  ---
+  duration_ms: 7.17136
+  type: 'test'
+  ...
+# Subtest: meeting and dance are temporary behaviours and return to ordinary navigation
+ok 21 - meeting and dance are temporary behaviours and return to ordinary navigation
+  ---
+  duration_ms: 28.923487
+  type: 'test'
+  ...
+# Subtest: All 26 catalog geometries fit their dimensions; bag has exactly ten source meshes
+ok 22 - All 26 catalog geometries fit their dimensions; bag has exactly ten source meshes
+  ---
+  duration_ms: 197.948733
+  type: 'test'
+  ...
+# Subtest: V3 migration preserves every legacy object dimension and world position
+ok 23 - V3 migration preserves every legacy object dimension and world position
+  ---
+  duration_ms: 2.056351
+  type: 'test'
+  ...
+# Subtest: Two independent small boxes above and one large below fit the reference cart
+ok 24 - Two independent small boxes above and one large below fit the reference cart
+  ---
+  duration_ms: 1.790351
+  type: 'test'
+  ...
+# Subtest: Nested attachments rotate/translate with cart and detach without losing contents
+ok 25 - Nested attachments rotate/translate with cart and detach without losing contents
+  ---
+  duration_ms: 1.181717
+  type: 'test'
+  ...
+# Subtest: Shelf changes lift descendant stacks; same-height peers collide but parents do not
+ok 26 - Shelf changes lift descendant stacks; same-height peers collide but parents do not
+  ---
+  duration_ms: 0.775285
+  type: 'test'
+  ...
+# Subtest: Changing attachment kind removes incompatible anchor fields during a move
+ok 27 - Changing attachment kind removes incompatible anchor fields during a move
+  ---
+  duration_ms: 0.793553
+  type: 'test'
+  ...
+# Subtest: Removing builder shelf levels remaps children without invalidating saved layout
+ok 28 - Removing builder shelf levels remaps children without invalidating saved layout
+  ---
+  duration_ms: 0.46567
+  type: 'test'
+  ...
+# Subtest: Import rejects cycles, dangling surfaces, nonfinite data and malformed variants
+ok 29 - Import rejects cycles, dangling surfaces, nonfinite data and malformed variants
+  ---
+  duration_ms: 1.101966
+  type: 'test'
+  ...
+# Subtest: Wall placement sets base height, rejects openings and avoids false floor-door issues
+ok 30 - Wall placement sets base height, rejects openings and avoids false floor-door issues
+  ---
+  duration_ms: 0.553252
+  type: 'test'
+  ...
+# Subtest: Tape has separate budget, bounded points, full roundtrip, and no collisions
+ok 31 - Tape has separate budget, bounded points, full roundtrip, and no collisions
+  ---
+  duration_ms: 1.763831
+  type: 'test'
+  ...
+# Subtest: Keep-clear clearance is checked separately and shelf contents are not floor hazards
+ok 32 - Keep-clear clearance is checked separately and shelf contents are not floor hazards
+  ---
+  duration_ms: 0.514313
+  type: 'test'
+  ...
+# Subtest: Exact measured door hinge opens inward; sweep and direction match collision geometry
+ok 33 - Exact measured door hinge opens inward; sweep and direction match collision geometry
+  ---
+  duration_ms: 1.052112
+  type: 'test'
+  ...
+# Subtest: Elevated object picking and support-ray hits agree with model transform
+ok 34 - Elevated object picking and support-ray hits agree with model transform
+  ---
+  duration_ms: 0.362875
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1153.738943

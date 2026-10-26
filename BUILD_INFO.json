@@ -1,0 +1,51 @@
+{
+  "version": "5.0.2",
+  "date": "2026-10-22",
+  "base_commit": "73f44e821d722a5a33b9b2628f6f1c466b088b66",
+  "branch": null,
+  "room_geometry_sha256": "e8e4521987c5fa67c2edd9932ee872cddffc86af4b07680a8a57dfd612175e85",
+  "v2_geometry_unchanged": true,
+  "v3_unchanged": true,
+  "runtime_dependencies": [],
+  "asset_types": 29,
+  "limits": {
+    "objects": 48,
+    "tape_segments": 512,
+    "local_variants": 20,
+    "undo_steps": 60,
+    "people": 12,
+    "nav_cell_metres": 0.18,
+    "npc_radius_metres": 0.28
+  },
+  "cartridge_source_commit": "6067233c23ba63a04e8d0a8e1ccb7a3adbd62906",
+  "private_only": true,
+  "v4_unchanged": true,
+  "html_bytes": 4532290,
+  "html_sha256": "de9157ca52f6fb6490bca78939cd6613d2341d4e6df49b74f7e61fdb5c5abbec",
+  "people_variants": 4,
+  "people_asset_bytes": 268488,
+  "people_license": "CC0-1.0 / Kenney Mini Characters 1.0",
+  "simulation_separate_from_layout": true,
+  "standard_layout_schema": "hissrum12-v4-layout / version 4",
+  "scenario_schema": "hissrum12-v5-scenario / version 1",
+  "delivery": "User-uploaded ZIP patched locally with three additional CREFORM objects; no GitHub changes",
+  "patch_source_archive": "Hissrum12_Layout_Studio_V5.zip",
+  "patch_source_archive_sha256": "9c0cce51319a6610fe4b7634de59538e9f4ce8aa7af76f9ab2f13579da545fba",
+  "previous_html_sha256": "2100b5a5780a2be1a65d8357bf01be25bd88a30cd97a848d1e11f9c75874ca45",
+  "patch_runtime_files": [
+    "source/simulation-ui.js",
+    "source/template.html"
+  ],
+  "patch_verification": {
+    "core_checks_passed": 34,
+    "integration_scenarios_passed": 8,
+    "import_and_supplementary_ui_checks_passed": 11,
+    "browser": "Chromium 144.0.7559.96",
+    "renderer": "ANGLE / SwiftShader",
+    "mode": "Headed Xvfb, complete HTML loaded inline, browser network disabled",
+    "file_navigation_verified": false,
+    "persistent_local_storage_verified": false,
+    "physical_iphone_verified": false
+  },
+  "test_report": "PATCH_V5_0_2.md"
+}

@@ -1,0 +1,129 @@
+{
+  "startedAt": "2026-10-20T18:22:58.811Z",
+  "htmlSha256": "2100b5a5780a2be1a65d8357bf01be25bd88a30cd97a848d1e11f9c75874ca45",
+  "loadMode": "inline-built-html",
+  "headless": false,
+  "networkDisabled": true,
+  "results": [
+    {
+      "name": "incoming_open_door_overrides_current_closed_in_preflight",
+      "status": "failed",
+      "error": "page.evaluate: Error: En sparad startposition blockeras av den aktuella möbleringen.\n    at Object.importConfig (<anonymous>:1442:55)\n    at Object.importScenario (<anonymous>:252:171)\n    at eval (eval at evaluate (:290:30), <anonymous>:1:50)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:44:22\n    at scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:24:108)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:43:2",
+      "elapsedMs": 40
+    },
+    {
+      "name": "invalid_closed_door_scenario_rejected_before_layout_changes",
+      "status": "failed",
+      "error": "AssertionError [ERR_ASSERTION]: Rejected import must not replace furniture or the door\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:49:19\n    at async scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:24:102)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:47:2",
+      "elapsedMs": 41
+    },
+    {
+      "name": "saved_quality_restores_runtime_control_and_reexport",
+      "status": "failed",
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'auto' !== 'low'\n\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:53:75\n    at async scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:24:102)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:51:2",
+      "elapsedMs": 3236
+    },
+    {
+      "name": "invalid_quality_rejected_without_mutating_layout_people_or_view",
+      "status": "failed",
+      "error": "AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  assert(r.error)\n\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:57:3\n    at async scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:24:102)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:55:2",
+      "elapsedMs": 38
+    },
+    {
+      "name": "legacy_missing_display_and_bare_simulation_preserve_quality",
+      "details": {
+        "scenario": "high",
+        "bare": "high",
+        "control": "high",
+        "people": 1,
+        "running": false
+      },
+      "status": "passed",
+      "elapsedMs": 707
+    },
+    {
+      "name": "both_door_directions_and_saved_target_during_animation",
+      "details": [
+        {
+          "direction": 1,
+          "angle": 90,
+          "point": [
+            [
+              1.65,
+              -3.8
+            ]
+          ]
+        },
+        {
+          "direction": -1,
+          "angle": 90,
+          "point": [
+            [
+              1.65,
+              -3.8
+            ]
+          ]
+        }
+      ],
+      "status": "passed",
+      "elapsedMs": 58
+    },
+    {
+      "name": "scenario_without_layout_uses_current_not_target_door_pose",
+      "details": {
+        "error": "En sparad startposition blockeras av den aktuella möbleringen.",
+        "unchanged": true,
+        "people": 0
+      },
+      "status": "passed",
+      "elapsedMs": 666
+    },
+    {
+      "name": "three_supplied_scenarios_import_and_remain_separate_from_layout",
+      "details": [
+        {
+          "file": "V5_01_Liv_i_5S_rummet.json",
+          "count": 4,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        },
+        {
+          "file": "V5_02_MH_upphamtning.json",
+          "count": 1,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        },
+        {
+          "file": "V5_03_Kaizen_Chaos.json",
+          "count": 4,
+          "paused": true,
+          "layoutUnchanged": true,
+          "quality": "auto",
+          "glError": 0
+        }
+      ],
+      "status": "passed",
+      "elapsedMs": 1501
+    },
+    {
+      "name": "real_scenario_file_input_restores_low_quality",
+      "status": "failed",
+      "error": "page.waitForFunction: Timeout 15000ms exceeded.\n    at /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:81:14\n    at async scenario (/mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:24:102)\n    at async /mnt/data/hissrum_v5_patchwork/Hissrum12_3D_Layout_Planner_V5/tests/browser-v5-import.cjs:78:2",
+      "elapsedMs": 15089
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "networkRequests": [],
+  "limitations": [
+    "file:// navigation is blocked by the test environment; the complete unchanged built HTML is loaded inline.",
+    "Persistent localStorage is not verified by this fallback."
+  ],
+  "browser": "144.0.7559.96",
+  "status": "failed",
+  "finishedAt": "2026-10-20T18:23:22.402Z"
+}
