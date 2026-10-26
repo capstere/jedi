@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=20261026-floorfix';
+import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs';
 import {Game,WEAPONS} from './fps/game.mjs';
 
 const $=id=>document.getElementById(id);
@@ -9,7 +9,7 @@ const settings={sensitivity:.0021,mobileSensitivity:.0065};
 let scene,renderer,camera,world,game,modelRoot,weaponRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
-let currentPhase='',currentWeapon='',spectateActor=null,lockGrace=0;
+let currentPhase='',currentWeapon='',spectateActor=null;
 
 function progress(message){$('loading-text').textContent=message;console.info('[hissrum-strike] '+message);}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
@@ -19,20 +19,21 @@ function setHidden(id,hidden){$(id).hidden=hidden;}
 
 function setupGraphics(){
   scene=new THREE.Scene();
-  scene.background=new THREE.Color('#172630');
-  scene.fog=new THREE.FogExp2('#172630',.0025);
-  camera=new THREE.PerspectiveCamera(coarse?81:74,innerWidth/innerHeight,.055,220);
+  scene.background=new THREE.Color('#42575e');
+  scene.fog=null;
+  camera=new THREE.PerspectiveCamera(coarse?84:76,innerWidth/innerHeight,.045,175);
   camera.rotation.order='YXZ';
   renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,coarse?1.25:1.65));
   renderer.setSize(innerWidth,innerHeight);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.7;
-  renderer.shadowMap.enabled=false; // Baked GLB scene + lightweight dynamic actors.
-  scene.add(new THREE.HemisphereLight('#ecfbff','#758f97',2.5));
-  const sun=new THREE.DirectionalLight('#f4fff8',2.7);
-  sun.position.set(-21,45,31);scene.add(sun);
+  renderer.toneMappingExposure=1.72;
+  renderer.shadowMap.enabled=false;
+  scene.add(new THREE.AmbientLight('#eefaff',1.5));
+  scene.add(new THREE.HemisphereLight('#f5fbff','#9db6bd',3.0));
+  const sun=new THREE.DirectionalLight('#fcf8ed',2.1);
+  sun.position.set(-18,41,23);scene.add(sun);
   scene.add(camera);
   initViewWeapon();
   initTracers();
@@ -106,6 +107,33 @@ function syncCharacters(dt){
  }
 }
 
+function installRoomLighting(){
+  // The original room surfaces may be single-sided with outward-facing normals.
+  // Render original fixed surfaces from INSIDE. Do not invent replacement walls.
+  const roomName=/^(base__|floor__|north__|south__|west__|east__|fixed_south__|ceiling_|beam__|services__)/i;
+  let twoSided=0;
+  modelRoot.traverse(object=>{
+    if(!object.isMesh)return;
+    const mats=Array.isArray(object.material)?object.material:[object.material];
+    for(const material of mats){
+      if(!material)continue;
+      if(roomName.test(object.name||'')||roomName.test(object.parent?.name||'')){
+        material.side=THREE.DoubleSide;material.needsUpdate=true;twoSided++;
+      }
+      if(/lamp$/i.test(material.name||'')){
+        material.emissive=new THREE.Color('#ffe9b6');
+        material.emissiveIntensity=.65;
+      }
+    }
+  });
+  const b=world.bounds,w=b.max.x-b.min.x,d=b.max.z-b.min.z;
+  for(const [u,v] of [[.27,.27],[.73,.27],[.27,.72],[.73,.72]]){
+    const light=new THREE.PointLight('#fff6e2',95,MINIATURE_SCALE*6.5,2);
+    light.position.set(b.min.x+w*u,MINIATURE_SCALE*2.26,b.min.z+d*v);
+    scene.add(light);
+  }
+  console.info('[Hissrum Strike] Interior material and fixture lights',{twoSided});
+}
 function initViewWeapon(){
  weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
  const g=new THREE.BoxGeometry(.18,.13,.63),body=new THREE.Mesh(g,mat('#263c46',.7));
@@ -146,7 +174,8 @@ function startGame(){
  game.start('analysts');
  if(mode==='classic')game.buy(loadout);
  game.pause(false);
- lookYaw=game.player.yaw;lookPitch=.085;currentPhase='';currentWeapon='';
+ lookYaw=game.player.yaw;lookPitch=.095;game.player.pitch=lookPitch;
+ currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
  weaponRoot.visible=true;setHidden('menu',true);setHidden('pause',true);
  setHidden('match-end',true);setHidden('hud',false);
@@ -213,12 +242,13 @@ function cameraFollow(dt){
  weaponRoot.visible=p.alive;
  gunKick=Math.max(0,gunKick-dt*.45);
  weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
- weaponRoot.position.set(.30,-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,-.52+gunKick);
+ weaponRoot.position.set(coarse?.29:.30,coarse?-.41:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.86:-.52+gunKick);
  weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
  const w=WEAPONS[p.weapon];
- if(w?.slot==='pistol')weaponRoot.scale.set(.7,.8,.68);
- else if(w?.slot==='knife')weaponRoot.scale.set(.28,.5,.68);
- else weaponRoot.scale.set(1,1,1);
+ const s=coarse?.64:1;
+ if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
+ else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
+ else weaponRoot.scale.set(s,s,s);
  muzzle.visible=performance.now()<shotUntil;
 }
 function activeInput(){
@@ -237,37 +267,29 @@ function paintMapBackground(){
  const c=document.createElement('canvas');c.width=c.height=190;
  const ctx=c.getContext('2d'),b=world.bounds;
  const width=b.max.x-b.min.x,depth=b.max.z-b.min.z;
- const xy=(x,z)=>({x:8+(x-b.min.x)/width*174,y:8+(z-b.min.z)/depth*174});
- ctx.fillStyle='#0d252d';ctx.fillRect(0,0,190,190);
- ctx.fillStyle='#395e64';
+ ctx.fillStyle='#08222a';ctx.fillRect(0,0,190,190);
+ ctx.fillStyle='#34545d';
  const step=world.navigation.spacing;
  for(const n of world.navigation.nodes){
-   const p=xy(n.x,n.z);
-   ctx.fillRect(p.x-step/width*87,p.y-step/depth*87,Math.max(1,step/width*174),Math.max(1,step/depth*174));
+   const x=8+(n.x-b.min.x)/width*174,y=8+(n.z-b.min.z)/depth*174;
+   ctx.fillRect(x,y,Math.max(1,step/width*174),Math.max(1,step/depth*174));
  }
- // The map uses actual 3D mesh footprints, not invented generic corridors.
- // Room shell stays in the background; all authored movable GLB objects are
- // projected using their precise model transformations in world metres.
- let propCount=0;
- world.model.updateMatrixWorld(true);
- world.model.traverse(object=>{
-   if(!object.isMesh)return;
-   if(/^(?:floor|north|south|east|west|ceiling|beam|pier|services|base)(?:__|_)/i.test(object.name))return;
-   const box=new THREE.Box3().setFromObject(object);
-   if(box.isEmpty())return;
-   const sw=box.max.x-box.min.x,sd=box.max.z-box.min.z;
-   if(sw>width*.8||sd>depth*.8||sw<.04||sd<.04)return;
-   const a=xy(box.min.x,box.min.z),z=xy(box.max.x,box.max.z);
-   const fixed=/fixed_south/.test(object.name);
-   ctx.fillStyle=fixed?'#627b83':/vagn|pall|creform|cart|rack|truck/i.test(object.name)?'#cc9870':'#759a9a';
-   ctx.fillRect(a.x,a.y,Math.max(1,z.x-a.x),Math.max(1,z.y-a.y));
-   propCount++;
- });
- ctx.strokeStyle='#a3cbd0';ctx.lineWidth=1.2;ctx.strokeRect(7.5,7.5,175,175);
- const elevator=xy((b.min.x+b.max.x)/2+width*.132,b.min.z+depth*.032);
- ctx.strokeStyle='#71e8e3';ctx.lineWidth=4;
- ctx.beginPath();ctx.moveTo(elevator.x-11,elevator.y);ctx.lineTo(elevator.x+11,elevator.y);ctx.stroke();
- world.statistics.mappedProps=propCount;
+ // Real GLB furniture footprints — the map now has recognizable structure.
+ ctx.globalAlpha=.96;
+ for(const o of world.landmarks){
+   const x=8+(o.min.x-b.min.x)/width*174,y=8+(o.min.z-b.min.z)/depth*174;
+   const ww=Math.max(1.5,(o.max.x-o.min.x)/width*174);
+   const hh=Math.max(1.5,(o.max.z-o.min.z)/depth*174);
+   ctx.fillStyle=/CREFORM/i.test(o.name)?'#62e0e6':
+     /EUR-pall|kartong/i.test(o.name)?'#deb577':
+     /sopkärl|Torr-is/i.test(o.name)?'#929da5':'#a6bfac';
+   ctx.fillRect(x,y,ww,hh);
+   if(/CREFORM/i.test(o.name)){ctx.strokeStyle='#f2ffff';ctx.lineWidth=.7;ctx.strokeRect(x,y,ww,hh);}
+ }
+ ctx.globalAlpha=1;
+ ctx.strokeStyle='#9dc3c9';ctx.lineWidth=1.8;ctx.strokeRect(7.5,7.5,175,175);
+ ctx.font='bold 9px sans-serif';ctx.fillStyle='#ebf5f3';
+ ctx.fillText('HISS 12',75,17);
  return c;
 }
 function drawMinimap(){
@@ -319,7 +341,17 @@ function refreshHUD(now){
  $('reserve').textContent=item?.reserve??'—';
  $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM': 'R · LADDA OM';
  $('health').style.color=p.hp<30?'#ff9584':'#f5fcfc';
- $('mission').textContent=s.mode==='endless'?'5 MOT 5 · MINIATYRSTRID I HISSRUM 12':
+ if(world.landmarks.length){
+   let nearest=null,best=Infinity;
+   for(const prop of world.landmarks){
+     const d=Math.hypot(prop.x-p.x,prop.z-p.z);
+     if(d<best){nearest=prop;best=d;}
+   }
+   $('nearby-label').textContent=nearest
+      ?(best<MINIATURE_SCALE*2.2?'NÄRA · ':'MOT · ')+nearest.name.replace(/ · kopia.*$/,'').slice(0,26)
+      :'HISSRUM 12';
+ }
+ $('mission').textContent=s.mode==='endless'?(coarse?'HISSRUM 12 · MINI 5V5':'5 MOT 5 · MINIATYRSTRID I HISSRUM 12'):
    s.bomb.status==='planted'?'DESARMERA BOMBEN · SKYDDA GISSLAN':
    'FÖRSVARA HISSRUMMET · HINDRA PLANTERING OCH RÄDDNING';
  $('spectating').hidden=p.alive;
@@ -347,8 +379,10 @@ function frame(now){
  }else{
    if(world&&!game){
      const b=world.bounds,cx=(b.min.x+b.max.x)/2,cz=(b.min.z+b.max.z)/2;
-     camera.position.set(cx-15,16,cz+28);
-     camera.lookAt(cx,2,cz);
+     camera.position.set(cx+3,MINIATURE_SCALE*2.15,cz+(b.max.z-b.min.z)*.43);
+     const feature=world.landmarks.find(o=>/CREFORM-vagn 900/i.test(o.name))
+       ||world.landmarks.find(o=>/CREFORM/i.test(o.name));
+     camera.lookAt(feature?.x??cx,MINIATURE_SCALE*.7,feature?.z??cz);
    }
  }
  for(const t of tracers)if(t.until<now)t.line.visible=false;
@@ -373,16 +407,11 @@ window.addEventListener('mouseup',()=>fire=false);
 window.addEventListener('blur',()=>{keys.clear();fire=false;touchFire=false;if(active)pauseGame();});
 document.addEventListener('mousemove',e=>{
  if(!active||paused||document.pointerLockElement!==canvas)return;
- // Chromium can emit an enormous movement delta while recentering the cursor
- // on pointer-lock acquisition. Never treat that warp as player aim input.
- if(lockGrace>0){lockGrace--;return;}
- if(Math.abs(e.movementX)>180||Math.abs(e.movementY)>180)return;
  lookYaw-=e.movementX*settings.sensitivity;
  lookPitch=clamp(lookPitch-e.movementY*settings.sensitivity,-1.48,1.48);
 });
 document.addEventListener('pointerlockchange',()=>{
- if(document.pointerLockElement===canvas){lockGrace=3;return;}
- if(active&&!paused&&!coarse)pauseGame();
+ if(active&&!paused&&!coarse&&document.pointerLockElement!==canvas)pauseGame();
 });
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -391,12 +420,10 @@ function setupTouch(){
  let movePointer=null,lookPointer=null,lookX=0,lookY=0;
  function padMove(e){
    const rect=pad.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-   const radius=Math.max(25,rect.width*.38);
-   const x=clamp((e.clientX-cx)/radius,-1,1),y=clamp((e.clientY-cy)/radius,-1,1);
+   const x=clamp((e.clientX-cx)/45,-1,1),y=clamp((e.clientY-cy)/45,-1,1);
    const len=Math.hypot(x,y),f=len>1?1/len:1;
    touchStrafe=x*f;touchForward=-y*f;
-   const thumbTravel=Math.max(16,(rect.width-stick.offsetWidth)/2-5);
-   stick.style.transform='translate('+touchStrafe*thumbTravel+'px,'+(-touchForward)*thumbTravel+'px)';
+   stick.style.transform='translate('+touchStrafe*38+'px,'+(-touchForward)*38+'px)';
  }
  pad.addEventListener('pointerdown',e=>{e.preventDefault();movePointer=e.pointerId;pad.setPointerCapture(movePointer);padMove(e);});
  pad.addEventListener('pointermove',e=>{if(e.pointerId===movePointer)padMove(e);});
@@ -442,23 +469,18 @@ requestAnimationFrame(frame);
 try{
  world=await createHissrumWorld(progress);
  modelRoot=world.model;scene.add(modelRoot);
+ installRoomLighting();
  mapBackdrop=paintMapBackground();
  if(new URLSearchParams(location.search).has('test')){
-   // Browser visual regression hooks — never enabled for regular players.
-   window.__hissrumInspect=()=>({
-     floorReferenceY:world.statistics.floorReferenceY,
-     floorTriangles:world.statistics.floorTriangles,
-     modelBounds:{min:world.modelBounds.min.toArray(),max:world.modelBounds.max.toArray()},
-     roomBounds:{min:world.bounds.min.toArray(),max:world.bounds.max.toArray()},
-     camera:{position:camera.position.toArray(),yaw:camera.rotation.y,pitch:camera.rotation.x},
-     player:game?.player?{x:game.player.x,y:game.player.y,z:game.player.z,yaw:game.player.yaw,height:game.player.height}:null,
-     anchor:world.anchors.analysts[0],
-     objects:world.statistics.meshCount,
-     mappedProps:world.statistics.mappedProps,
-     children:world.model.children.length,
-     canvas:{width:canvas.width,height:canvas.height},
-     render:renderer.info.render.calls,
-     loaded:!!world
+   window.__hissrumDiagnostics=()=>({
+     scale:MINIATURE_SCALE,roomHeight:world.bounds.max.y,
+     floorReference:world.statistics.floorReference,
+     player:game?{x:game.player.x,y:game.player.y,z:game.player.z,yaw:game.player.yaw,eye:camera.position.y}:null,
+     camera:{position:camera.position.toArray(),forward:camera.getWorldDirection(new THREE.Vector3()).toArray()},
+     anchors:world.anchors,
+     namedProps:world.landmarks.map(o=>({name:o.name,x:o.x,y:o.y,z:o.z,
+       ndc:new THREE.Vector3(o.x,o.y,o.z).project(camera).toArray()})),
+     stats:world.statistics
    });
  }
  setHidden('loading',true);

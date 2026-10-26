@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=20261026-floorfix">
+  <link rel="stylesheet" href="./style.css">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -25,8 +25,8 @@
     <div class="eyebrow">CARTRIDGE STRIKE / SPECIAL EDITION · 2026</div>
     <div class="header-emblem">12<span>V5</span></div>
     <h1 id="game-title">HISSRUM<span>STRIKE</span></h1>
-    <p class="subtitle">Du är 17 centimeter lång.<br>Hela slagfältet är Hissrum 12.</p>
-    <div class="chips"><span>1:10 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span></div>
+    <p class="subtitle">Du är cirka 28 centimeter lång.<br>Hela slagfältet är Hissrum 12.</p>
+    <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span></div>
     <div class="menu-options">
       <label>Spelläge
         <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
@@ -57,7 +57,7 @@
     <div class="round-time"><span id="phase">FÖRBEREDELSE</span><strong id="clock">0:00</strong><small id="round">RUNDA 1</small></div>
     <div class="hud-score enemy"><small>COUNTER <b id="alive-b">5</b></small><strong id="score-b">0</strong><span class="team-dot amber"></span></div>
   </header>
-  <aside class="map-card"><div class="map-title">HISSRUM 12 <span>1:10</span></div><canvas id="minimap" width="190" height="190" aria-label="Taktisk karta"></canvas><div class="map-legend"><span>● DITT LAG</span><span>● FIENDER</span></div></aside>
+  <aside class="map-card"><div class="map-title">HISSRUM 12 <span>1:6</span></div><canvas id="minimap" width="190" height="190" aria-label="Taktisk karta"></canvas><div class="map-legend"><span>● DITT LAG</span><span>● FIENDER</span></div><div class="nearby-label" id="nearby-label">CREFORM · PALLAR · VAGNAR</div></aside>
   <div class="kill-feed" id="killfeed" aria-live="polite"></div>
   <div class="mission" id="mission">TA KONTROLL ÖVER HISSRUMMET</div>
   <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
@@ -98,6 +98,6 @@
     <button data-touch="switch">VAPEN</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=20261026-floorfix"></script>
+<script type="module" src="./src/main.mjs"></script>
 </body>
 </html>
