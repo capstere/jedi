@@ -19,20 +19,21 @@ function setHidden(id,hidden){$(id).hidden=hidden;}
 
 function setupGraphics(){
   scene=new THREE.Scene();
-  scene.background=new THREE.Color('#172630');
-  scene.fog=new THREE.FogExp2('#172630',.0025);
-  camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.055,220);
+  scene.background=new THREE.Color('#42575e');
+  scene.fog=null;
+  camera=new THREE.PerspectiveCamera(coarse?84:76,innerWidth/innerHeight,.045,175);
   camera.rotation.order='YXZ';
   renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,coarse?1.25:1.65));
   renderer.setSize(innerWidth,innerHeight);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.5;
-  renderer.shadowMap.enabled=false; // Baked GLB scene + lightweight dynamic actors.
-  scene.add(new THREE.HemisphereLight('#ecfbff','#758f97',2.5));
-  const sun=new THREE.DirectionalLight('#f4fff8',2.7);
-  sun.position.set(-21,45,31);scene.add(sun);
+  renderer.toneMappingExposure=1.72;
+  renderer.shadowMap.enabled=false;
+  scene.add(new THREE.AmbientLight('#eefaff',1.5));
+  scene.add(new THREE.HemisphereLight('#f5fbff','#9db6bd',3.0));
+  const sun=new THREE.DirectionalLight('#fcf8ed',2.1);
+  sun.position.set(-18,41,23);scene.add(sun);
   scene.add(camera);
   initViewWeapon();
   initTracers();
@@ -106,6 +107,33 @@ function syncCharacters(dt){
  }
 }
 
+function installRoomLighting(){
+  // The original room surfaces may be single-sided with outward-facing normals.
+  // Render original fixed surfaces from INSIDE. Do not invent replacement walls.
+  const roomName=/^(base__|floor__|north__|south__|west__|east__|fixed_south__|ceiling_|beam__|services__)/i;
+  let twoSided=0;
+  modelRoot.traverse(object=>{
+    if(!object.isMesh)return;
+    const mats=Array.isArray(object.material)?object.material:[object.material];
+    for(const material of mats){
+      if(!material)continue;
+      if(roomName.test(object.name||'')||roomName.test(object.parent?.name||'')){
+        material.side=THREE.DoubleSide;material.needsUpdate=true;twoSided++;
+      }
+      if(/lamp$/i.test(material.name||'')){
+        material.emissive=new THREE.Color('#ffe9b6');
+        material.emissiveIntensity=.65;
+      }
+    }
+  });
+  const b=world.bounds,w=b.max.x-b.min.x,d=b.max.z-b.min.z;
+  for(const [u,v] of [[.27,.27],[.73,.27],[.27,.72],[.73,.72]]){
+    const light=new THREE.PointLight('#fff6e2',95,MINIATURE_SCALE*6.5,2);
+    light.position.set(b.min.x+w*u,MINIATURE_SCALE*2.26,b.min.z+d*v);
+    scene.add(light);
+  }
+  console.info('[Hissrum Strike] Interior material and fixture lights',{twoSided});
+}
 function initViewWeapon(){
  weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
  const g=new THREE.BoxGeometry(.18,.13,.63),body=new THREE.Mesh(g,mat('#263c46',.7));
@@ -146,7 +174,8 @@ function startGame(){
  game.start('analysts');
  if(mode==='classic')game.buy(loadout);
  game.pause(false);
- lookYaw=game.player.yaw;lookPitch=0;currentPhase='';currentWeapon='';
+ lookYaw=game.player.yaw;lookPitch=.095;game.player.pitch=lookPitch;
+ currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
  weaponRoot.visible=true;setHidden('menu',true);setHidden('pause',true);
  setHidden('match-end',true);setHidden('hud',false);
@@ -412,7 +441,20 @@ requestAnimationFrame(frame);
 try{
  world=await createHissrumWorld(progress);
  modelRoot=world.model;scene.add(modelRoot);
+ installRoomLighting();
  mapBackdrop=paintMapBackground();
+ if(new URLSearchParams(location.search).has('test')){
+   window.__hissrumDiagnostics=()=>({
+     scale:MINIATURE_SCALE,roomHeight:world.bounds.max.y,
+     floorReference:world.statistics.floorReference,
+     player:game?{x:game.player.x,y:game.player.y,z:game.player.z,yaw:game.player.yaw,eye:camera.position.y}:null,
+     camera:{position:camera.position.toArray(),forward:camera.getWorldDirection(new THREE.Vector3()).toArray()},
+     anchors:world.anchors,
+     namedProps:world.landmarks.map(o=>({name:o.name,x:o.x,y:o.y,z:o.z,
+       ndc:new THREE.Vector3(o.x,o.y,o.z).project(camera).toArray()})),
+     stats:world.statistics
+   });
+ }
  setHidden('loading',true);
  $('start').disabled=false;$('start').textContent='STARTA MINI-MATCH';
 }catch(error){
