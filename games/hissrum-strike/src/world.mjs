@@ -232,10 +232,19 @@ export async function createHissrumWorld(progress=()=>{}){
     const dx=b.x-a.x,dy=(b.y??1)-(a.y??1),dz=b.z-a.z,length=Math.hypot(dx,dy,dz);
     return length<EPS||!raycast({x:a.x,y:a.y??1,z:a.z},{x:dx,y:dy,z:dz},Math.max(0,length-.045),options);
   }
+  // Room footprint is copied from the authenticated V5 floor bounds, never
+  // a new wall. Positional audio uses it to place subtle industrial ambience.
+  const roomPolygon=[
+    [bounds.min.x,bounds.min.z],[bounds.max.x,bounds.min.z],
+    [bounds.max.x,bounds.max.z],[bounds.min.x,bounds.max.z]
+  ];
   const world={model,bounds,landmarks,octree,floor,inside,canOccupy,canTravel,move,raycast,segmentClear,
     canStand:(actor,h)=>canOccupy(actor.x,actor.z,actor.radius||.2,h,actor.y||0),
-    materialAt:()=> 'concrete',roomAt:(x,z)=>({id:x<bounds.min.x+(bounds.max.x-bounds.min.x)/3?'I01':
-      x>bounds.max.x-(bounds.max.x-bounds.min.x)/3?'I26':'I12',name:'Hissrum 12'}),
+    materialAt:()=> 'concrete',roomAt:(x,z)=>({
+      id:x<bounds.min.x+(bounds.max.x-bounds.min.x)/3?'I01':
+        x>bounds.max.x-(bounds.max.x-bounds.min.x)/3?'I26':'I12',
+      name:'Hissrum 12',polygon:roomPolygon
+    }),
     doors:null,tactical:null,statistics:stats};
   progress('Bygger säkra gångvägar mellan de verkliga objekten…');
   world.navigation=createNavigation(world,{spacing:1.45});
