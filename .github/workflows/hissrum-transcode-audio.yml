@@ -43,5 +43,9 @@ jobs:
           git add games/hissrum-strike/assets/audio/*.mp3
           if ! git diff --staged --quiet; then
             git commit -m "Provide AAC-free MP3 fallbacks for Kenney CC0 sounds on iPhone Safari"
+            # The connector can push unrelated source edits while Actions runs.
+            # Rebase the binary-only commit to the CURRENT feature head.
+            git fetch origin feat/hissrum-audio-blood-dwarfs-flying-bots
+            git rebase origin/feat/hissrum-audio-blood-dwarfs-flying-bots
             git push origin HEAD:refs/heads/feat/hissrum-audio-blood-dwarfs-flying-bots
           fi
