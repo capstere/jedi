@@ -29,7 +29,7 @@ test('every relative ES module import resolves within the spin-off folder',()=>{
   const content=readFileSync(file,'utf8');
   for(const match of content.matchAll(/(?:from\\s*|import\\s*)['"]([^'"]+)['"]/g)){
     if(!match[1].startsWith('.'))continue;
-    const target=path.resolve(path.dirname(file),match[1]);
+    const target=path.resolve(path.dirname(file),match[1].split('?')[0]);
     assert.ok(existsSync(target),path.relative(root,file)+' imports missing '+target);
   }
  }

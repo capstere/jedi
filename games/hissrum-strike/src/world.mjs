@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from '../vendor/three/addons/loaders/GLTFLoader.js';
 import {Octree} from '../vendor/three/addons/math/Octree.js';
 import {Capsule} from '../vendor/three/addons/math/Capsule.js';
-import {createNavigation,selectAnchors} from './navigation.mjs';
+import {createNavigation,selectAnchors} from './navigation.mjs?v=20261026-floorfix';
 
 export const ROOM_MODEL='Hissrum12_V5_med_39_objekt.glb';
 export const MINIATURE_SCALE=10;
@@ -22,10 +22,14 @@ const floorKey=(x,z)=>Math.floor(x/4)+','+Math.floor(z/4);
 
 function makeFloorIndex(group){
   const floor=new Map();let polygons=0;
+  const limits={minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity};
   const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
   group.updateWorldMatrix(true,true);
   group.traverse(object=>{
-    if(!object.isMesh || !object.geometry?.attributes?.position)return;
+    // Source GLB also contains a decorative structural plinth at y=-0.19 m.
+    // Only the authored floor mesh defines walkable floor; using the lowest
+    // triangle of the whole model spawns players UNDER the actual room floor.
+    if(!object.isMesh || !/^floor__floor(?:_|$)/.test(object.name) || !object.geometry?.attributes?.position)return;
     const g=object.geometry,pos=g.getAttribute('position'),idx=g.index;
     const count=idx?idx.count:pos.count;
     for(let i=0;i+2<count;i+=3){
@@ -35,10 +39,14 @@ function makeFloorIndex(group){
       const yMin=Math.min(a.y,b.y,c.y),yMax=Math.max(a.y,b.y,c.y);
       // Only the genuine model floor; tabletops and suspended assets cannot
       // create fictional walkable islands below the player's feet.
-      if(yMin<-.14||yMax>.22||yMax-yMin>.15)continue;
+      if(yMin<-.30||yMax>.30||yMax-yMin>.28)continue;
       const area=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
       if(Math.abs(area)<.0005)continue;
       const p={ax:a.x,az:a.z,bx:b.x,bz:b.z,cx:c.x,cz:c.z,area};
+      limits.minX=Math.min(limits.minX,a.x,b.x,c.x);
+      limits.maxX=Math.max(limits.maxX,a.x,b.x,c.x);
+      limits.minZ=Math.min(limits.minZ,a.z,b.z,c.z);
+      limits.maxZ=Math.max(limits.maxZ,a.z,b.z,c.z);
       const minX=Math.floor(Math.min(a.x,b.x,c.x)/4),maxX=Math.floor(Math.max(a.x,b.x,c.x)/4);
       const minZ=Math.floor(Math.min(a.z,b.z,c.z)/4),maxZ=Math.floor(Math.max(a.z,b.z,c.z)/4);
       for(let x=minX;x<=maxX;x++)for(let z=minZ;z<=maxZ;z++){
@@ -57,7 +65,7 @@ function makeFloorIndex(group){
     }
     return false;
   }
-  return {supports,polygons};
+  return {supports,polygons,limits};
 }
 
 export async function createHissrumWorld(progress=()=>{}){
@@ -73,12 +81,21 @@ export async function createHissrumWorld(progress=()=>{}){
   model.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(model);
   if(bounds.isEmpty())throw Error('GLB contained no geometry');
-  model.position.y-=bounds.min.y;
+  // The source floor is at y≈0 m, NOT at the minimum model bound.
+  // Base trim extends 19 cm below it; never normalize by bounds.min.y.
+  model.position.y=0;
   model.updateMatrixWorld(true);
   bounds.setFromObject(model);
+  if(bounds.min.y < -0.25 && bounds.min.y > -4) progress('Golv i originalkoordinater · sockel under golvnivå ignoreras');
   progress('Analyserar verkligt golv och kollisionsytor…');
   const floor=makeFloorIndex(model);
-  if(!floor.polygons)throw Error('Inga plana golvtrianglar hittades i GLB. Kontrollera 3D-exporten.');
+  if(!floor.polygons)throw Error('Saknar originalets floor__floor, start avbruten för att undvika spawn under golvet.');
+  // Some movable assets extend beyond the room. Define world navigation,
+  // minimap and spawns from the authored room FLOOR footprint, not unrelated
+  // props or the outer plinth.
+  const modelBounds=bounds.clone();
+  bounds.min.x=floor.limits.minX;bounds.max.x=floor.limits.maxX;
+  bounds.min.z=floor.limits.minZ;bounds.max.z=floor.limits.maxZ;
   const octree=new Octree();
   octree.trianglesPerLeaf=28;
   octree.maxLevel=8;
@@ -168,7 +185,7 @@ export async function createHissrumWorld(progress=()=>{}){
     const dx=b.x-a.x,dy=(b.y??1)-(a.y??1),dz=b.z-a.z,length=Math.hypot(dx,dy,dz);
     return length<EPS||!raycast({x:a.x,y:a.y??1,z:a.z},{x:dx,y:dy,z:dz},Math.max(0,length-.045),options);
   }
-  const world={model,bounds,octree,floor,inside,canOccupy,canTravel,move,raycast,segmentClear,
+  const world={model,bounds,modelBounds,octree,floor,inside,canOccupy,canTravel,move,raycast,segmentClear,
     canStand:(actor,h)=>canOccupy(actor.x,actor.z,actor.radius||.2,h,actor.y||0),
     materialAt:()=> 'concrete',roomAt:(x,z)=>({id:x<bounds.min.x+(bounds.max.x-bounds.min.x)/3?'I01':
       x>bounds.max.x-(bounds.max.x-bounds.min.x)/3?'I26':'I12',name:'Hissrum 12'}),
@@ -176,9 +193,12 @@ export async function createHissrumWorld(progress=()=>{}){
   progress('Bygger säkra gångvägar mellan de verkliga objekten…');
   world.navigation=createNavigation(world,{spacing:1.45});
   world.findPath=world.navigation.findPath;
-  world.anchors=selectAnchors(world.navigation,bounds);
+  world.anchors=selectAnchors(world.navigation,bounds,world);
   stats.navigation=world.navigation.statistics;
   stats.spawns=10;
+  stats.floorReferenceY=0;
+  stats.floorMeshes=['floor__floor'];
+  stats.floorFootprint={...floor.limits};
   // Cache intentionally reserved for future occlusion work; no background worker.
   cache.clear();
   return world;

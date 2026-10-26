@@ -18,7 +18,7 @@ En separat **spelbar FPS-spin-off** inuti originalmodellen `Hissrum12_V5_med_39_
 - **Classic**: 5 mot 5 i rundor med samma bomb-/gisslanmekanik som ursprungliga Cartridge Strike. Startkapitalet höjt så valt vapen kan köpas i startfasen.
 - Samma Cartridge Strike-komponenter för spelregler, vapen, träffar, AI-beteende, reaktioner och svårighet; en separat karta, renderer och kontroller.
 - Dator: **WASD**, mus, **R** ladda, **1–4** utrustning, **Shift** smyg, **Ctrl** huka, **Space** hoppa, **E** interagera, **B** köp (Classic), **Esc** paus.
-- Mobil: vänster rörelseplatta, svep på höger sida för sikte, knappar för skott, omladdning, hopp och interaktion.
+- Mobil: kompakt vänster rörelseplatta, svep på höger sida för sikte, knappar för skott, omladdning, hopp och interaktion. Pausknappen längst ner är separat klickbar.
 
 Det är **lokalt botspeleläge, inte nätverksmultiplayer**.
 
@@ -29,6 +29,8 @@ Rummet laddas direkt från repositoryts enda originalfil:
 `../../Hissrum12_V5_med_39_objekt.glb` (räknat från spelets index.html).
 
 - Modellens faktiska trianglar bygger både Three.js Octree-kollisioner och projektilernas synlighets-/träfftester; inga handritade/osynliga kollisionsväggar läggs till.
+- **Viktig koordinatregel:** Source-GLB:s `floor__floor` ligger runt Y=0 meter medan `base__trim` sticker 19 cm *under* golvet. Nollställ därför aldrig spelarens position med GLB-modellens lägsta Y. Den buggen orsakade tidigare en kamera under rummet.
+- Spelplanens X/Z-utsträckning, minikarta och spawnpunkter beräknas från `floor__floor`, inte objekt som ligger utanför rummet. Spelaren börjar i rummets centrala gång och tittar mot den blå godshissen.
 - Gångbara celler härleds från de trianglar i modellen som representerar golvet. Navigationen behåller den största verkligt sammanhängande golvytan och verifierar alla passager med samma kollisionsvolym som spelarna.
 - Spawns, bombplats och gisslan placeras dynamiskt på gångbar yta i samma rum, inte i artificiella rum eller korridorer.
 - Kollisionsnavigeringen förberäknas vid laddning; efteråt återanvänds den. Grafikkvalitet och skärmupplösning begränsas på mobil; ingen dynamisk skuggkarta krävs.
@@ -59,5 +61,7 @@ Yuka och Three.js GLTFLoader/Capsule/Octree ingår lokalt med sina upphovsrätts
 node --test games/hissrum-strike/tests/*.test.mjs
 find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
 ```
+
+Det obligatoriska Chromium-testet på CI öppnar **original-GLB:n** i desktop- och iPhone-viewport, verifierar golvets referenshöjd och spelarens kameraposition, mäter ljus/kontrast i renderade skärmbilder, kontrollerar mobilknapparnas storlek och kör paus/återupptagning med mus respektive touch. Skärmbilder laddas upp som GitHub Actions-artefakter.
 
 Starta även i webbläsare och kontrollera minst: bild av de 39 objekten, mini-skala, skottträff, botars navigering runt vagnar och kartonger, respawn och att spelaren inte kan gå genom väggar eller lämna den exporterade golvytan. Testera desktop och mobil. Rekonstruerad 3D-geometri är endast spelmiljö och är inte underlag för verkliga säkerhets- eller flödesbeslut.

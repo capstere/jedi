@@ -1,6 +1,6 @@
 name: Hissrum Strike verification
 concurrency:
-  group: hissrum-strike-${{ github.head_ref || github.ref_name }}
+  group: hissrum-visual-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 on:
   push:
@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Inspect Hissrum 12 source model geometry
+        run: python3 games/hissrum-strike/tests/inspect_glb.py
       - name: Check module syntax
         run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - name: Run deterministic navigation and model tests
@@ -40,13 +42,17 @@ jobs:
           node-version: '22'
       - name: Install pinned Playwright browser runner
         run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
-          npx playwright install --with-deps chromium
-      - name: Load the real GLB and play a smoke round
+          npm install --no-save --no-package-lock playwright@1.56.1 pngjs@7.0.0
+          npx playwright install --only-shell chromium
+      - name: Load the real GLB and validate desktop + phone gameplay
         run: node games/hissrum-strike/tests/browser-smoke.cjs
+        env:
+          VISUAL_DEBUG: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hissrum-strike-browser
-          path: hissrum-strike-browser.png
+          path: |
+            hissrum-strike-browser.png
+            hissrum-strike-mobile.png
           if-no-files-found: ignore
