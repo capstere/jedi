@@ -4,26 +4,74 @@ on:
     branches: [perf/hissrum-small-polish-v10]
     paths: ['.github/workflows/hissrum-polish-workbench.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  snapshot:
+  integrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Export original scene and game sources
+        with:
+          ref: perf/hissrum-small-polish-v10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact reviewed integration
+        run: |
+          python3 .maintenance/hissrum-polish-v10.py
+          cat >> games/hissrum-strike/README.md <<'DOC'
+
+          ## Avgränsad putsning: touch och HUD (v10)
+
+          - En aktiv pekare per touchkontroll. Ett andra finger kan inte ta över styrspaken
+            eller släppa någon annans nedtryckta knapp. Avbruten pekning och förlorad
+            pointer capture nollställer rörelse/eld. Paus, butik, resultattavla och ändrad
+            skärmstorlek avslutar gamla gester; fortsättning kräver en ny beröring.
+          - En liten radiell dödzon i styrspaken tar bort mikrorörelser nära mitten.
+            Diagonal rörelse är fortfarande normaliserad. Styrplattans mått läses en gång
+            per gest, inte vid varje pointermove.
+          - Elimineringsloggen återanvänder fem DOM-rader och uppdaterar bara ändrad text,
+            färgklass eller synlighet. Oförändrad logg orsakar inga DOM-skrivningar.
+          - Minimapens spelarpil använder heading för alla tre hörn; tidigare använde
+            två hörn flyghöjden. Pilen vrider sig nu utan att deformeras när man flyger.
+          - Preferensen för reducerad rörelse läses från en återanvänd MediaQueryList
+            i stället för att skapa en ny i varje vapenbildruta.
+
+          Tester: `input-hud-polish.test.mjs` mäter antal layoutläsningar/DOM-skrivningar
+          samt kontrollerar pekarägande, avbrott, dödzon och pilens geometri.
+          `input-hud-browser.cjs` provar riktiga Chromium-touchhändelser och capture loss
+          mot det laddade spelet. Dessa testresultat är inte ett påstående om viss FPS
+          på fysisk iPhone. Vapenbalans, kartans kollisioner och Cartridge-bilen är bevarade.
+
+          Pekarhanteringen följer W3C Pointer Events (`https://w3c.github.io/pointerevents/`)
+          och `lostpointercapture`-livscykeln.
+          DOC
+      - name: Verify all output equals locally tested files
         run: |
           python3 - <<'PY'
-          import pathlib, zipfile
-          root=pathlib.Path('.')
-          with zipfile.ZipFile('hissrum-polish-source.zip','w',zipfile.ZIP_DEFLATED) as z:
-            for p in sorted((root/'games/hissrum-strike').rglob('*')):
-              if p.is_file(): z.write(p,p.as_posix())
-            for name in ['Hissrum12_V5_med_39_objekt.glb','.github/workflows/hissrum-strike.yml']:
-              z.write(name,name)
+          import hashlib,pathlib
+          expected={
+          'games/hissrum-strike/README.md':'0bf57623dbf19d47a8d2be8284c320518893472c37606b5bb52f8927ebbd7058',
+          'games/hissrum-strike/index.html':'1fad204b9a050dfdd7108f03bdd61385abb77f13faa36171ffc57959bac9b4d4',
+          'games/hissrum-strike/src/hud-polish.mjs':'7b719cacc41c21cab522d29455b2a9ffa21cbec1c9a360df8fb52d40f2705dff',
+          'games/hissrum-strike/src/main.mjs':'f24afbbd345e91d8095fb14c30a5be805ab9b0c56e297c90af66f32428afa40a',
+          'games/hissrum-strike/src/touch-controls.mjs':'c913eb210f817dd7a3f8c531666181a750b8d173833397cc5e4b2a1f190e5f48',
+          'games/hissrum-strike/tests/browser-smoke.cjs':'2136695550d50f18f8bf1e7aaf7fdab2444e82c5b7ea2f4f201795f4b2c82af1',
+          'games/hissrum-strike/tests/input-hud-browser.cjs':'9128650ad59d3e349061f961d3889c20a69095baf2aaaabe29efa6b15f5b4e65',
+          'games/hissrum-strike/tests/input-hud-polish.test.mjs':'3835c9c1be1630c38f26c0b16be7bf7c30f6947a5bfaf9ce7611740851a809f1'}
+          for path,sha in expected.items():
+              actual=hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+              assert actual==sha,(path,actual,sha)
+          print('All 8 integration files match locally tested SHA-256')
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: hissrum-polish-source
-          path: hissrum-polish-source.zip
-          retention-days: 1
+          find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check games/hissrum-strike/tests/browser-smoke.cjs
+          node --check games/hissrum-strike/tests/input-hud-browser.cjs
+          node --test games/hissrum-strike/tests/*.test.mjs
+      - name: Commit only tested game files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add games/hissrum-strike
+          git commit -m 'Integrate checked touch ownership, pooled HUD and minimap heading fixes'
+          git push origin HEAD:refs/heads/perf/hissrum-small-polish-v10
