@@ -1,0 +1,22 @@
+name: Hissrum v9 workbench
+on:
+  push:
+    branches: [feat/hissrum-cartridge-tank-v9]
+    paths: ['.github/workflows/hissrum-v9-workbench.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hissrum-v9-source
+          path: |
+            games/hissrum-strike/
+            Hissrum12_V5_med_39_objekt.glb
+            .github/workflows/hissrum-strike.yml
+          include-hidden-files: true
+          retention-days: 1
