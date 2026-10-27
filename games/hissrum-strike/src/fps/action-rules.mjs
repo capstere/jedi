@@ -1,3 +1,4 @@
+import {tankRay} from './cartridge-tank.mjs';
 import {freshRecoil} from './recoil.mjs';
 import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs';
 /** Arcade rules. Simulation time only; visual/audio systems never own damage or respawns. */
@@ -50,6 +51,7 @@ export function respawnPoint(g,a){
  let best=null,bestScore=-Infinity;
  for(const p of candidates){
   if(g.world.canOccupy&&!g.world.canOccupy(p.x,p.z,a.radius+.015,a.height,0))continue;
+  if(g.state.tank?.alive&&dist(p,g.state.tank)<g.state.tank.radius+a.radius+.2)continue;
   if(living.some(o=>dist(o,p)<(o.radius||.2)+a.radius+.12))continue;
   if(p.frontline&&living.some(o=>o.team&&o.team!==a.team&&dist(o,p)<7))continue;
   const control=activeControl(g);
@@ -64,7 +66,7 @@ export function respawnPoint(g,a){
 }
 export function respawnActor(g,a){
  const p=respawnPoint(g,a);if(!p)return false; // retry next tick, never overlap another capsule
- Object.assign(a,p,{hp:g.config.health,alive:true,height:g.config.standingHeight,vy:0,onGround:true,crouching:false,
+ Object.assign(a,p,{vehicleId:null,hp:g.config.health,alive:true,height:g.config.standingHeight,vy:0,onGround:true,crouching:false,
   reloadUntil:0,nextShot:g.state.time+.15,flashUntil:0,flash:0,flashStart:0,action:null,moving:0,distanceWalked:0,recoil:0,flying:false,aimRecoil:freshRecoil(),rawAimYaw:p.yaw??0,rawAimPitch:0,autoAim:null,autoAimProgress:0,airPatrol:null,
   lastStep:g.state.time,fireHeld:false,interactHeld:false,jumpHeld:false,hurtTime:-Infinity,hurtDirection:null,deathAt:null,deathCause:null,
   respawnAt:null,spawnProtectedUntil:g.state.time+g.config.spawnProtection,blockedBy:null});
@@ -138,7 +140,10 @@ export function updateRockets(g,dt,rayActor){
  for(const r of g.state.projectiles||[]){
   const len=Math.hypot(r.vx,r.vy,r.vz)*dt,dir={x:r.vx/22,y:r.vy/22,z:r.vz/22},from=pos(r);
   const wall=g.world.raycast(from,dir,len,{vision:false});let travel=wall?.distance??len,hit=null;
+  const tank=g.state.tank,td=tankRay(from,dir,tank,travel);
+  if(td!==null){travel=td;hit=tank;}
   for(const a of aliveBodies(g)){
+   if(a.vehicleId)continue;
    if(a.id===r.ownerId&&g.state.time-r.born<.18)continue;
    const d=rayActor(from,dir,a,travel);if(d!==null&&d<=travel){travel=d;hit=a;}
   }
@@ -147,7 +152,7 @@ export function updateRockets(g,dt,rayActor){
    const origin={x:r.x-dir.x*.10,y:Math.max(.08,r.y-dir.y*.10),z:r.z-dir.z*.10};
    const owner=g.actors.find(a=>a.id===r.ownerId),radius=4.6;
    g.emit('rocket-explosion',null,{...origin,ownerId:r.ownerId,team:r.team,radius});
-   for(const a of aliveBodies(g)){
+   for(const a of [...aliveBodies(g).filter(a=>!a.vehicleId),...(tank?.alive?[tank]:[])]){
     const center={...pos(a),y:a.y+a.height*.55};const distance=Math.hypot(a.x-origin.x,center.y-origin.y,a.z-origin.z);
     if(distance>=radius&&a!==hit)continue;
     if(a!==hit&&!g.world.segmentClear(origin,center,{vision:false}))continue;

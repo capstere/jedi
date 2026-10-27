@@ -26,9 +26,11 @@ export function crosshairEnemy(game,actor,weapon){
  const dir={x:-Math.sin(actor.yaw)*Math.cos(actor.pitch),y:Math.sin(actor.pitch),z:-Math.cos(actor.yaw)*Math.cos(actor.pitch)};
  let nearest=game.world.raycast(origin,dir,weapon.range,{vision:false})?.distance??weapon.range;
  let body=null;
+ const blocked=game.vehicleRay?.(origin,dir,nearest);
+ if(blocked!==null&&blocked!==undefined)nearest=blocked;
  // Friends and noncombatants block the trigger even when friendly fire is OFF.
  for(const other of [...game.actors,...game.hostages,...(game.state.wanderers||[])]){
-  if(other===actor||other.alive===false||other.rescued)continue;
+  if(other===actor||other.alive===false||other.rescued||other.vehicleId)continue;
   const hit=rayBody(origin,dir,other,nearest);
   if(hit!==null && hit<nearest){nearest=hit;body=other;}
  }

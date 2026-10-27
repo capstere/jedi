@@ -180,3 +180,38 @@ Alla V7-funktioner (autoeld, progressiv rekyl, arsenal, granatbana, flygande bot
 spelstatistik, inga poäng på vänlig/odödlig träff, riktning, tidsgränser och
 begränsade buffertar. Fulla real-GLB browser-testet provar även mobilens tavla,
 inställningar och omladdningsmätare.
+
+
+## Cartridge-pansarvagn (v9)
+
+En egen modellerad vit Cartridge-bil med blå pansarkjol, larvband och ett rörligt
+kanontorn står på en gulmarkerad plats i minimapen. Den riktiga GLB-modellen,
+Layout Studio och allt tidigare innehåll är oförändrat.
+
+Gå fram till bilen och tryck **E** eller **KÖR**. Kör framåt/bakåt med **W/S**,
+sväng med **A/D**; på telefon används vänster joystick. Mus/högersvep riktar
+kanontornet oberoende av chassit. Skjut med musknappen eller **KANON** och bromsa
+med **Space/BROMS**. **E/LÄMNA** placerar dig på en kontrollerad fri plats bredvid
+bilen. Flygning, handvapen och butiken används först när du lämnat fordonet.
+
+Bilen har **900 pansarpoäng**, reducerar vanlig kulskada och skyddar föraren.
+Kanonens ammunition är obegränsad med **1,15 s** mellan skotten. Den träffar
+verkliga kroppar och hinder; explosionen går inte genom väggar. Kör över
+oskyddade fiender med fart för att slå ut dem. Lagkamrater, gisslan och skyddade
+nyspawnade spelare blockeras i stället för att bli överkörda.
+
+Förstörd bil får en bränd modell och ett torn som kastas upp och faller ned.
+Föraren dör genom samma träff-/poäng-/Death01-system som vanlig strid. Efter
+**12 simuleringssekunder** återkommer en ny bil med fullt pansar på exakt samma
+ursprungliga parkeringsplats. Den väntar om någon står där. Paus fryser timern.
+
+Death01 har även fått en tydligare träffreaktion, riktad lutning och ett
+läsbart fall för vanliga skott, huvudträffar och kraftigare träffar. Kroppar i
+luften faller ned till en kontrollerad yta. Spelarens död visas kort i
+tredjeperson; den som skjuter ser motståndarens verkliga fall, inte en extra
+poänganimation som ändrar spelresultatet.
+
+`src/fps/cartridge-tank.mjs` äger all fordonsfysik/skada/livscykel.
+`src/tank-view.mjs` visar modellen och effekter med fasta pooler.
+`tests/cartridge-tank.test.mjs` testar collision, fiendepåkörning, vänligt skydd,
+kanon, pansar, vanlig Game-poängräkning, fordonsförstörelse och fast respawn.

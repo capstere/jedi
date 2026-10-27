@@ -1,17 +1,20 @@
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
-import {Game,WEAPONS} from './fps/game.mjs?v=arsenal-v7';
-import {AudioSystem} from './audio.mjs';
+import {Game,WEAPONS} from './fps/game.mjs?v=cartridge-tank-v9';
+import {AudioSystem} from './audio.mjs?v=cartridge-tank-v9';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
-import {isAutoFireWeapon,resetAutoAim} from './fps/aim-controls.mjs';
+import {isAutoFireWeapon,resetAutoAim} from './fps/aim-controls.mjs?v=cartridge-tank-v9';
 import {GrenadeView} from './grenade-view.mjs';
+import {CartridgeTankView} from './tank-view.mjs';
+import {TANK,drivingTank,nearTank,toggleTank,tankFits} from './fps/cartridge-tank.mjs';
+import {deathMotion} from './characters/death-motion.mjs';
 import {CombatHUD} from './combat-hud.mjs?v=combat-hud-v8';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
 import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
 import {makeWeapon as createStrikeWorldWeapon} from './weapon-kit/model-primitives.mjs';
 import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
-  PLAYER_DEATH_CAMERA_SECONDS} from './characters/death-animation.mjs';
+  PLAYER_DEATH_CAMERA_SECONDS} from './characters/death-animation.mjs?v=cartridge-tank-v9';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
@@ -19,6 +22,7 @@ const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065,autoFire:true,trajectory:true,allyMarkers:true,combatFeedback:true};
 try{settings.autoFire=localStorage.getItem('hissrum.autoFire')!=='off';settings.trajectory=localStorage.getItem('hissrum.trajectory')!=='off';}catch{}
 try{settings.allyMarkers=localStorage.getItem('hissrum.allyMarkers')!=='off';settings.combatFeedback=localStorage.getItem('hissrum.combatFeedback')!=='off';}catch{}
+let tankView=null;
 let shopOpen=false,grenadeView=null,combatHUD=null,scoreOpen=false,scoreReturn='game';
 let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponStage,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
@@ -152,7 +156,7 @@ function syncCharacters(dt){
    let visual=actors.get(actor.id);
    if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
    const recentlyDead=corpseShouldShow(actor,game.state.time);
-   visual.visible=(actor.alive||recentlyDead)
+   visual.visible=!actor.vehicleId&&(actor.alive||recentlyDead)
      &&(watchingPlayerDeath()&&actor.isPlayer||shouldRenderAvatar(actor,cameraActor));
    // Even a body currently outside the camera starts the genuine Death01
    // action. This avoids delayed animation when the player turns around.
@@ -161,7 +165,15 @@ function syncCharacters(dt){
        poseAuthoredDeath(visual.userData.avatar,actor,game.state.time);
      continue;
    }
-   visual.position.set(actor.x,actor.y,actor.z);
+   let corpseY=actor.y;
+   if(recentlyDead){
+     if(visual.userData.corpseAt!==actor.deathAt){
+       const floor=world.raycast({x:actor.x,y:actor.y+.02,z:actor.z},{x:0,y:-1,z:0},actor.y+.04,{vision:false});
+       visual.userData.corpseFloor=Math.max(0,floor?.point.y||0);visual.userData.corpseAt=actor.deathAt;
+     }
+     corpseY=Math.max(visual.userData.corpseFloor,actor.y-deathMotion(actor,deathAge(actor,game.state.time)).airDrop);
+   }
+   visual.position.set(actor.x,corpseY,actor.z);
    visual.rotation.y=actor.yaw;
    // Authored crouch and jump clips handle body pose; do not squash the mesh
    // when Game changes its collision capsule height.
@@ -245,7 +257,7 @@ function showTracer(event){
  item.until=performance.now()+85;item.line.visible=true;
 }
 function setScope(value){
- aiming=!!value&&!!game?.player?.alive&&game.player.weapon==='sniper';
+ aiming=!!value&&!!game?.player?.alive&&!game.player.vehicleId&&game.player.weapon==='sniper';
  $('scope-toggle').setAttribute('aria-pressed',String(aiming));
  $('scope-toggle').classList.toggle('active',aiming);
  setHidden('scope-overlay',!aiming);
@@ -288,12 +300,14 @@ function closeScoreboard(){
  else resumeGame();
 }
 function selectGrenade(){
+ if(game?.player?.vehicleId)return;
  if(!game?.player?.alive||!active||paused)return;
  if(!game.select('grenade'))notice('INGA GRANATER · ÖPPNA KÖP / B',2);
  else{clearScope();resetControls();notice('GRANAT VALD · KASTA MED SKJUT / MUS',2);}
  syncSpecialHUD();
 }
 function openShop(){
+ if(game?.player?.vehicleId){notice('LÄMNA FORDONET FÖRE VAPENKÖP');return;}
  if(!active||!game?.player?.alive||!['buy','active'].includes(game.phase))return;
  pauseGame();shopOpen=true;setHidden('pause',true);setHidden('shop',false);
  $('shop-message').textContent='Köp direkt under rundan. 300 krediter per utslagen motståndare.';
@@ -322,7 +336,8 @@ function renderShop(){
 function syncSpecialHUD(){
  const p=game?.player;
  const flying=!!p?.alive&&!!p.flying;
- const sniper=!!p?.alive&&p.weapon==='sniper';
+ const mounted=!!game&&drivingTank(game,p);
+ const sniper=!!p?.alive&&!mounted&&p.weapon==='sniper';
  if(!sniper&&aiming)setScope(false);
  $('flight-status').hidden=!flying;
  $('flight-toggle').classList.toggle('active',flying);
@@ -332,19 +347,27 @@ function syncSpecialHUD(){
  $('descend-button').hidden=!flying;
  $('scope-toggle').hidden=!sniper;
  if(!flying)touchDescend=false;
- const w=WEAPONS[p?.weapon],automatic=coarse&&settings.autoFire&&isAutoFireWeapon(w);
+ const w=WEAPONS[p?.weapon],automatic=!mounted&&coarse&&settings.autoFire&&isAutoFireWeapon(w);
  const fireButton=document.querySelector('[data-touch="fire"]');
  fireButton.hidden=automatic;
- fireButton.textContent=w?.slot==='grenade'?'KASTA':w?.slot==='knife'?'SLÅ':'SKJUT';
+ fireButton.textContent=mounted?'KANON':w?.slot==='grenade'?'KASTA':w?.slot==='knife'?'SLÅ':'SKJUT';
  document.querySelector('.touch-actions').classList.toggle('auto-fire',automatic);
  $('auto-status').hidden=!automatic||!p?.alive;
  const lock=p?.autoAimProgress??0;
  $('auto-status').classList.toggle('locking',p?.weapon==='sniper'&&lock>0);
  $('auto-status').textContent=p?.weapon==='sniper'&&lock>0?'SIKTA · '+Math.round(lock*100)+' %':'AUTO';
- $('grenade-status').hidden=!(p?.alive&&w?.slot==='grenade');
+ $('grenade-status').hidden=mounted||!(p?.alive&&w?.slot==='grenade');
+ const t=game?.state.tank,near=!!game&&nearTank(game,p);
+ document.querySelector('[data-touch="interact"]').textContent=mounted?'LÄMNA':near?'KÖR':'E';
+ for(const key of ['reload','switch','fly','grenade']){const el=document.querySelector('[data-touch="'+key+'"]');if(el)el.hidden=mounted;}
+ $('jump-button').textContent=mounted?'BROMS':flying?'UPP':'HOPPA';
+ const status=$('tank-status');status.hidden=!(t&&(mounted||near||!t.alive));
+ status.textContent=mounted?'CARTRIDGE · PANSAR '+Math.ceil(t.hp)+' / '+t.maxHp:near?'E / KÖR · CARTRIDGE-PANSARVAGN':t&&!t.alive?'CARTRIDGE ÅTEROM '+Math.max(0,Math.ceil(t.respawnAt-game.state.time))+' s':'';
+ document.body.classList.toggle('driving-tank',mounted);
 }
 
 function toggleFlight(){
+ if(game?.player?.vehicleId)return;
  if(!active||paused||!game?.player?.alive)return;
  const p=game.player;
  p.flying=!p.flying;
@@ -382,6 +405,7 @@ function startGame(){
    config:{mode,difficulty,loadout,firefight:false,
      wanderers:$('dwarf-mode').value==='on',
      botFlight:$('bot-flight-mode').value==='on',
+     cartridgeTank:true,
      tacticalAI:true,progressiveRecoil:true,liveShop:true,openArsenal:true,
      agileFlight:true,maxFlyingBots:4,botFlySpeed:4.5,playerGrenadeSpeed:17,
      friendlyFire:false,
@@ -430,7 +454,7 @@ function mainMenu(){
  active=false;paused=false;if(game)game.pause(true);
  audioSystem?.reset();bloodEffects?.clear();actionVisuals?.clear();
  clearScope();
- game=null;clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
+ game=null;tankView?.update(null);clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
  setHidden('touch-controls',true);setHidden('menu',false);
  if(activeViewModel)activeViewModel.visible=false;
@@ -462,6 +486,9 @@ function updateEvents(){
    }
    if(event.type==='throw'&&event.actorId===game.player.id){fire=false;touchFire=false;}
 
+   if(event.type==='tank-enter'||event.type==='tank-exit'){clearScope();resetControls();syncSpecialHUD();notice(event.type==='tank-enter'?'CARTRIDGE · W/S KÖR · A/D SVÄNG · MUS/SVEP SIKTA':'DU HAR LÄMNAT FORDONET');}
+   if(event.type==='tank-destroyed')notice('CARTRIDGE FÖRSTÖRD · ÅTERKOMMER PÅ STARTPLATSEN',3);
+   if(event.type==='tank-exit-blocked')notice('UTGÅNGEN BLOCKERAD · FLYTTA BILEN');
    if(event.type==='kill')addKill(event);
    if(event.type==='damage'&&event.actorId===game.player.id)damageUntil=performance.now()+220;
    if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;weaponShotAt=game.state.time;}
@@ -484,19 +511,30 @@ function cameraFollow(dt){
    const age=Math.max(0,deathAge(p,game.state.time));
    const zoom=1.25+Math.min(1,age/.85)*.85;
    const angle=(p.yaw||0)+Math.PI*.62;
-   const target={x:p.x,y:p.y+.70,z:p.z};
+   const target={x:p.x,y:(actors.get(p.id)?.position.y??p.y)+.70,z:p.z};
    camera.position.set(
      target.x+Math.sin(angle)*zoom,
      target.y+1.10+Math.min(.45,age*.28),
      target.z+Math.cos(angle)*zoom);
+   const offset=camera.position.clone().sub(new THREE.Vector3(target.x,target.y,target.z));
+   const d=offset.length();offset.normalize();const obstruction=world.raycast(target,offset,d,{vision:false});
+   if(obstruction)camera.position.set(target.x,target.y,target.z).addScaledVector(offset,Math.max(.3,obstruction.distance-.15));
    camera.lookAt(target.x,target.y,target.z);
+ }else if(drivingTank(game,p)){
+   const t=game.state.tank,dir={x:-Math.sin(p.yaw)*Math.cos(p.pitch),y:Math.sin(p.pitch),z:-Math.cos(p.yaw)*Math.cos(p.pitch)};
+   const pivot=new THREE.Vector3(t.x,1.5,t.z);
+   const wish=new THREE.Vector3(t.x-dir.x*4.4,3.5-dir.y*2,t.z-dir.z*4.4);
+   const offset=wish.clone().sub(pivot),len=offset.length();offset.normalize();
+   const wall=world.raycast(pivot,offset,len,{vision:false});
+   camera.position.copy(pivot).addScaledVector(offset,wall?Math.max(.4,wall.distance-.18):len);
+   camera.lookAt(t.x+dir.x*32,1.5+dir.y*32,t.z+dir.z*32);
  }else{
    if(a.isPlayer)camera.rotation.set(a.pitch,a.yaw,0,'YXZ');
    else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
    // Crosshair and authoritative bullet origin coincide, including recoil.
    camera.position.set(a.x,a.y+a.height-.12,a.z);
  }
- const scopeActive=p.alive&&p.weapon==='sniper'&&aiming;
+ const scopeActive=p.alive&&!p.vehicleId&&p.weapon==='sniper'&&aiming;
  const desiredFov=scopeActive?19:(coarse?84:76);
  if(Math.abs(camera.fov-desiredFov)>.02){
    camera.fov+=(desiredFov-camera.fov)*Math.min(1,dt*13);
@@ -516,7 +554,7 @@ function cameraFollow(dt){
    weaponSwitchAt=game.state.time;
  }
  if(activeViewModel){
-   activeViewModel.visible=p.alive&&!scopeActive;
+   activeViewModel.visible=p.alive&&!p.vehicleId&&!scopeActive;
    if(activeViewModel.visible){
      const pose=animateStrikeViewWeapon(activeViewModel,p,game.state.time,dt,{
        shotAt:weaponShotAt,switchAt:weaponSwitchAt,recoil:gunKick,
@@ -588,6 +626,7 @@ function drawMinimap(){
    ctx.arc(x,y,5,0,Math.PI*2);ctx.stroke();
  }
  if(game.config.wanderers)for(const d of game.state.wanderers||[])if(d.alive)dot(d,'#e9bc72',2);
+ const t=game.state.tank;if(t){const [x,y]=xy(t.alive?t:t.home);ctx.fillStyle=t.alive?'#ffe589':'#978d82';ctx.fillRect(x-3,y-3,6,6);}
  if(game.player.alive){
    const a=game.player,[x,y]=xy(a);
    ctx.fillStyle='#fff';ctx.beginPath();
@@ -626,6 +665,11 @@ function refreshHUD(now){
  $('reload-hint').textContent=p.reloadUntil>s.time?'LADDAR OM':
    p.weapon==='sniper'?'Z / SIKTE · R LADDA':'R · LADDA OM';
  syncSpecialHUD();
+ if(drivingTank(game,p)){
+   const t=game.state.tank;const left=Math.max(0,t.nextShot-s.time);
+   $('weapon').textContent='CARTRIDGE-KANON';$('ammo').textContent='∞';$('reserve').textContent='';
+   $('reload-hint').textContent=left>0?'KANON LADDAR · '+left.toFixed(1)+' s':'REDO · E / LÄMNA';
+ }
  $('health').style.color=p.hp<30?'#ff9584':'#f5fcfc';
  if(world.landmarks.length){
    let nearest=null,best=Infinity;
@@ -674,9 +718,10 @@ function frame(now){
    }
    actionVisuals?.update(game,camera);
    bloodEffects?.update(game.state.time,dt,camera);
+   tankView?.update(game);
    if(now-lastHud>100){refreshHUD(now);lastHud=now;}
    combatHUD?.update(game,camera,{enabled:active&&!paused,markers:settings.allyMarkers,
-     feedback:settings.combatFeedback,scope:aiming,weapon:WEAPONS[game.player.weapon]});
+     feedback:settings.combatFeedback,scope:aiming,weapon:game.player.vehicleId?null:WEAPONS[game.player.weapon]});
  }else{
    combatHUD?.hide();
    if(world&&!game){
@@ -774,7 +819,10 @@ function setupTouch(){
      if(action==='grenade')selectGrenade();
      if(action==='jump')touchJump=true;
      if(action==='descend')touchDescend=true;
-     if(action==='interact')interact=true;
+     if(action==='interact'){
+       if(game&&active&&!paused&&(drivingTank(game)||nearTank(game))){toggleTank(game);clearScope();resetControls();syncSpecialHUD();}
+       else interact=true;
+     }
      if(action==='fly')toggleFlight();
      if(action==='scope')setScope(!aiming);
      if(action==='reload')game?.reload();
@@ -835,6 +883,7 @@ try{
  mapBackdrop=paintMapBackground();
  actionVisuals=new ActionVisuals(scene,world);
  grenadeView=new GrenadeView(scene,world);
+ tankView=new CartridgeTankView(scene);
  bloodEffects=new CombatEffects(scene,world,{blood:'standard'});
  audioSystem=new AudioSystem(world,{volume:.55,ambient:true});
  combatHUD=new CombatHUD(document);
@@ -852,7 +901,9 @@ try{
      stats:world.statistics,
      characterModelReady:charactersReady(),
      authoredVisuals:[...actors.values(),...hostages.values()].filter(v=>v.userData.renderType==='cartridge-strike-quaternius').length,
+     tank:game?.state.tank?{...game.state.tank,home:{...game.state.tank.home},shells:game.state.tankShells.length,driving:drivingTank(game),visible:!!tankView?.root.visible}:null,
      deathAnimations:[...actors.values()].filter(v=>!!v.userData.avatar?.death).length,
+     deathPhases:game?.actors.filter(a=>!a.alive&&Number.isFinite(a.deathAt)).map(a=>({id:a.id,...deathMotion(a,deathAge(a,game.state.time))}))||[],
      playerDeathCamera:!!watchingPlayerDeath(),
      weaponModel:activeViewModel?.userData?.id??null,
      viewmodelSource:activeViewModel?.userData?.hissrumSource??null,
@@ -902,6 +953,36 @@ try{
    // Death previews mutate test fixtures only, never the production match.
    let hudTestSerial=9000000;
    window.__hissrumVisualTest={
+     prepareTank:()=>{
+       const t=game?.state.tank,p=game?.player;if(!t?.alive||!p)return false;
+       // TEST ONLY: real model, original pad, same entry controls and cannon.
+       for(const a of [...game.actors,...game.hostages,...(game.state.wanderers||[])]){
+         if(a!==p){a.alive=false;a.respawnAt=Infinity;}
+       }
+       game.config.botFire=false;game.config.wanderers=false;game.state.projectiles=[];game.state.grenades=[];game.state.tankShells=[];
+       const yaw=[0,Math.PI/2,Math.PI,-Math.PI/2].find(y=>[.5,1,1.5,2.5].every(d=>
+         tankFits(world,t.x-Math.sin(y)*d,t.z-Math.cos(y)*d,y)))??0;
+       t.yaw=yaw;t.turretYaw=yaw;t.speed=0;t.driverId=null;t.team=null;
+       const beside=[1.9,-1.9].map(d=>({x:t.x+Math.cos(yaw)*d,z:t.z-Math.sin(yaw)*d}))
+         .find(n=>world.canOccupy(n.x,n.z,.2,1.7,0));
+       if(!beside)return false;
+       Object.assign(p,beside,{y:0,hp:100,armor:0,alive:true,vehicleId:null,flying:false,
+         vy:0,height:1.7,respawnAt:null,deathAt:null,deathCause:null,action:null});
+       p.yaw=p.rawAimYaw=lookYaw=yaw;p.pitch=p.rawAimPitch=lookPitch=0;
+       resetControls();syncSpecialHUD();return {home:{...t.home},x:t.x,z:t.z};
+     },
+     damageTank:(amount=80)=>{
+       if(!game?.state.tank)return false;
+       const source=game.actors.find(a=>a.team!==game.player.team);
+       return game.damage(game.state.tank,Math.min(5000,Math.max(0,amount)),source,'bazooka');
+     },
+     advanceVehicleRespawn:()=>{
+       if(!game?.state.tank||game.state.tank.alive)return false;
+       game.player.respawnAt=Infinity;
+       const until=game.state.tank.respawnAt+.1;
+       while(game.state.time<until)game.step(1/60,{});
+       return game.state.tank.generation;
+     },
      previewCombatFeedback:()=>{
        const p=game?.player,enemy=game?.actors.find(a=>a.team!==p?.team);
        if(!p?.alive||!enemy||!combatHUD)return false;

@@ -1,11 +1,12 @@
+import {initializeTank,tickTank,controlTank,toggleTank,nearTank,drivingTank,tankRay,damageTank} from './cartridge-tank.mjs';
 import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
 import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
 import { BotController } from './bots.mjs?v=hissrum-ai-v5';
 import {updateBotFlight} from './bot-flight.mjs?v=arsenal-v7';
-import {rayBody as rayActor,automaticTrigger,resetAutoAim} from './aim-controls.mjs';
+import {rayBody as rayActor,automaticTrigger,resetAutoAim} from './aim-controls.mjs?v=cartridge-tank-v9';
 import {freshRecoil,recoverRecoil,kickRecoil,applyAimRecoil} from './recoil.mjs';
 import {grenadeLaunch,advanceGrenade} from './grenade-ballistics.mjs';
-import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=arsenal-v7';
+import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=cartridge-tank-v9';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -41,6 +42,7 @@ export class Game {
     this.state = { phase: 'menu', time: 0, round: 0, difficulty: DIFFICULTIES[difficulty] ? difficulty : DEFAULT_DIFFICULTY, pendingDifficulty: null, score: { analysts: 0, counterAnalysts: 0 }, lossStreak: { analysts: 0, counterAnalysts: 0 }, actors: [], hostages: [], bomb: { status: 'none' }, grenades: [], smokes: [], drops: [], result: null, deadline: Infinity, paused: false, history: [] };
     this.config.difficulty = this.state.difficulty;
   }
+  vehicleRay(origin,dir,limit){return tankRay(origin,dir,this.state.tank,limit);}
   get actors() { return this.state.actors; }
   get hostages() { return this.state.hostages; }
   get player() { return this.actors.find(a => a.isPlayer); }
@@ -91,6 +93,7 @@ export class Game {
     for (const actor of this.actors) if (actor.bot) actor.bot.shop();
     prepareActionRound(this);
     initializeCombat(this);
+    initializeTank(this);
     this.emit('round', null, { round: s.round });
   }
   radio(id, actor=this.player) { return sendRadio(this,id,actor); }
@@ -120,6 +123,7 @@ export class Game {
     this.roundCandidates = []; this.pendingDamage = [];
     this.world.doors?.update(s.time,dt,[...this.actors,...this.hostages,...(this.config.wanderers?s.wanderers||[]:[])]);
     tickActionState(this,dt);
+    tickTank(this,dt);
     for (const actor of this.actors) {
       if (!actor.alive) continue;
       actor.recoil *= Math.exp(-8 * dt);
@@ -134,6 +138,11 @@ export class Game {
       // Flight is an optional Hissrum tactical behavior. Preserve the existing
       // Yuka bot controller for aiming, pathfinding and objective priorities.
       if(actor.bot&&this.config.botFlight)updateBotFlight(this,actor,controls,dt);
+      if(drivingTank(this,actor)){
+        if(controls.interact&&!actor.interactHeld)toggleTank(this,actor);
+        else controlTank(this,actor,controls,dt);
+        actor.interactHeld=!!controls.interact;actor.fireHeld=!!controls.fire;continue;
+      }
       this.moveActor(actor, controls, dt);
       if(actor.requireFireRelease&&!controls.fire)actor.requireFireRelease=false;
       const auto=actor.isPlayer&&automaticTrigger(this,actor,WEAPONS[actor.weapon],controls.autoFire===true&&!actor.requireFireRelease);
@@ -213,7 +222,7 @@ export class Game {
   }
   moveBody(actor, dx, dy, dz) {
     const before = point(actor), projectedY = Math.max(0, actor.y + dy);
-    const bodies = [...this.actors.filter(a => a.alive), ...this.hostages.filter(h => h.alive!==false && !h.rescued)].filter(other => other !== actor &&
+    const bodies = [...this.actors.filter(a => a.alive), ...this.hostages.filter(h => h.alive!==false && !h.rescued),...(this.state.tank?.alive?[this.state.tank]:[])].filter(other => other !== actor &&
       projectedY < other.y + other.height - .02 && projectedY + actor.height > other.y + .02);
     let x = actor.x, z = actor.z, remainingX = dx, remainingZ = dz;
     actor.blockedBy = null;
@@ -267,6 +276,7 @@ export class Game {
   inBuyZone(actor = this.player) { return this.world.anchors[actor.team].some(p => distance(actor, p) <= this.config.buyRadius); }
   buy(id, actor = this.player) {
     const reject = reason => ({ ok: false, reason });
+    if(actor?.vehicleId)return reject('Lämna fordonet före vapenköp.');
     const w = WEAPONS[id];
     if (!w || !w.cost) return reject('Utrustningen kan inte köpas.');
     const liveShop=!!this.config.liveShop&&!!actor?.isPlayer;
@@ -287,6 +297,7 @@ export class Game {
     this.emit('buy', actor, { item: id, cost:paid?w.cost:0 }); return { ok: true };
   }
   select(slot, actor = this.player) {
+    if(actor?.vehicleId)return false;
     if (!actor?.alive) return false;
     const inventory = actor.inventory; let id = slot;
     if (slot === 1 || slot === '1' || slot === 'primary') id = inventory.primary?.id;
@@ -308,6 +319,7 @@ export class Game {
     this.emit('switch', actor, { weapon: id }); return true;
   }
   reload(actor = this.player) {
+    if(actor?.vehicleId)return false;
     if (!actor?.alive || actor.reloadUntil || !['buy', 'active'].includes(this.phase)) return false;
     const item = this.item(actor), w = WEAPONS[actor.weapon];
     if (!item || !w.reload || item.ammo >= w.magazine || !item.reserve) return false;
@@ -326,6 +338,7 @@ export class Game {
     this.select(actor.inventory.pistol ? 'pistol' : 'knife', actor); return true;
   }
   fire(actor = this.player, pressed = true) {
+    if(actor?.vehicleId)return false;
     const w = WEAPONS[actor.weapon];
     if (this.phase !== 'active' || !actor.alive || actor.reloadUntil || this.state.time + EPS < actor.nextShot || actor.action) return false;
     if (!w || w.slot === 'bomb' || (!w.automatic && !pressed && !actor.bot)) return false;
@@ -345,8 +358,10 @@ export class Game {
       const dir = direction(actor.yaw + (this.random() - .5) * spread, actor.pitch + (this.random() - .5) * spread);
       const wall = this.world.raycast(origin, dir, w.range, { vision: false });
       let nearest = wall?.distance ?? w.range, victim = null;
+      const tankHit=tankRay(origin,dir,this.state.tank,nearest);
+      if(tankHit!==null){nearest=tankHit;victim=this.state.tank;}
       for (const target of [...this.actors,...(this.config.hostageDamage?this.hostages:[]),...(this.config.wanderers?this.state.wanderers||[]:[])]) {
-        if (!target.alive || target.rescued || target === actor) continue;
+        if (!target.alive || target.rescued || target === actor || target.vehicleId) continue;
         const hit = rayActor(origin, dir, target, nearest);
         if (hit !== null && hit < nearest) { nearest = hit; victim = target; }
       }
@@ -368,7 +383,9 @@ export class Game {
     applyAimRecoil(actor,{}); // camera and next shot use the same offset
   }
   damage(target, amount, source, kind = 'shot', context = {}) {
-    if (this.phase !== 'active' || !target?.alive || !Number.isFinite(amount) || amount <= 0 || (source && source.team && source.team === target.team && !this.config.friendlyFire && !(source===target&&kind==='bazooka'))) return false;
+    if(target?.kind==='vehicle')return damageTank(this,target,amount,source,kind,context);
+    if(drivingTank(this,target)&&!context.vehicleBypass)return damageTank(this,this.state.tank,amount,source,kind,context);
+    if (this.phase !== 'active' || !target?.alive || !Number.isFinite(amount) || amount <= 0 || (source && source.team && source.team === target.team && !this.config.friendlyFire && !(source===target&&['bazooka','tank-wreck'].includes(kind)))) return false;
     if(target.spawnProtectedUntil>this.state.time)return false;
     if(target.kind==='hostage'&&!this.config.hostageDamage)return false;
     if(target.kind==='dwarf'&&!this.config.wanderers)return false;
@@ -386,7 +403,7 @@ export class Game {
     if (target.hp > 0) return true;
     resetAutoAim(target);target.aimRecoil=freshRecoil();
     target.alive = false; target.deaths++; target.action = null; target.reloadUntil = 0; target.deathAt = this.state.time;
-    target.deathCause = { sourceId: source?.id, sourceName: source?.name, weapon: kind, point: { ...hitPoint }, direction: { ...incoming } };
+    target.deathCause = { head:hitPoint.y>target.y+target.height*.78, sourceId: source?.id, sourceName: source?.name, weapon: kind, point: { ...hitPoint }, direction: { ...incoming } };
     if (source && source!==target && target.team && source.team!==target.team) { source.kills++; source.money = Math.min(this.config.maxMoney, source.money + this.config.killMoney); }
     if (target.inventory?.primary) this.dropItem(target, target.inventory.primary);
     if(target.kind==='hostage'){target.escortId=null;target.path=[];}
@@ -434,8 +451,14 @@ export class Game {
       this.state.smokes.push({ ...point(grenade), y: grenade.y + 1, id: grenade.id, radius: c.smokeRadius, until: this.state.time + c.smokeDuration }); return;
     }
     const owner = this.actors.find(a => a.id === grenade.ownerId), origin = { ...point(grenade), y: grenade.y + .08 };
+    const tank=this.state.tank;
+    if(grenade.type==='he'&&tank?.alive){
+      const center={x:tank.x,y:.9,z:tank.z},d=Math.hypot(center.x-origin.x,center.y-origin.y,center.z-origin.z);
+      if(d<c.heRadius&&this.world.segmentClear(origin,center,{vision:false}))
+        this.pendingDamage.push({target:tank,amount:160*(1-d/c.heRadius),source:owner,kind:'he',point:center,sourcePosition:origin});
+    }
     for (const actor of [...this.actors,...(this.config.hostageDamage?this.hostages:[]),...(this.config.wanderers?this.state.wanderers||[]:[])]) {
-      if (!actor.alive||actor.rescued) continue;
+      if (!actor.alive||actor.rescued||actor.vehicleId) continue;
       const target = eye(actor), d = Math.hypot(target.x - origin.x, target.y - origin.y, target.z - origin.z);
       if (grenade.type === 'he') {
         // Solid glass is cover for blast; clear glass only permits vision/flash.
@@ -466,11 +489,14 @@ export class Game {
   prompt(actor = this.player) {
     if (!actor?.alive) return 'Utslagen · följ en levande lagkamrat';
     if (this.phase === 'buy') return 'B · köp utrustning';
+    if(drivingTank(this,actor))return 'E · lämna Cartridge-pansarvagn';
+    if(nearTank(this,actor))return 'E · kör Cartridge-pansarvagn';
     const action = this.interaction(actor);
     if (!action) return '';
     return { plant: 'Håll E · plantera i GX LAB 5', defuse: 'Håll E · desarmera', pickupBomb: 'E · ta upp uppdragsbomb', escort: action.target.escortId ? 'E · stoppa eskort' : 'E · starta eskort', pickupWeapon: `E · ta upp ${WEAPONS[action.target.item?.id]?.name ?? 'vapen'}` }[action.type];
   }
   interact(actor, input) {
+    if(actor.isPlayer&&input.interact&&!actor.interactHeld&&nearTank(this,actor)){toggleTank(this,actor);return;}
     const interaction = input.interact ? this.interaction(actor, input.interactTarget) : null;
     if (!interaction) { actor.action = null;if(input.interact){const door=this.world.doors?.nearest(actor);if(door)this.world.doors.request(door,this.state.time,actor);} return; }
     if (interaction.duration) {

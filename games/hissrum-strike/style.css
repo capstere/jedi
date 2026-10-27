@@ -325,3 +325,8 @@ body.combat-medal-visible #notify{opacity:0!important}
 
 /* Allow portrait/landscape scoreboard scrolling without enabling gameplay gestures. */
 #scoreboard{touch-action:pan-y;overscroll-behavior:contain}
+
+/* v9: contextual vehicle status, never an extra mobile aiming button. */
+#tank-status{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);max-width:85vw;padding:7px 11px;background:rgba(5,29,38,.85);border:1px solid #e7cc87;color:#ffe7a6;border-radius:4px;text-align:center;white-space:normal;font:800 11px/1.4 Inter,sans-serif;letter-spacing:.03em;pointer-events:none}
+body.driving-tank #auto-status,body.driving-tank #flight-status{display:none!important}
+@media(pointer:coarse) and (max-width:760px){#tank-status{bottom:calc(100px + env(safe-area-inset-bottom));font-size:9px;padding:5px 8px;max-width:73vw}}
