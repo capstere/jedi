@@ -314,6 +314,7 @@ function startGame(){
  clearScope();syncSpecialHUD();
  currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
+ for(const gun of weaponModels.values())gun.visible=false;
  currentWeapon='';activeViewModel=null;weaponShotAt=-Infinity;
  setHidden('menu',true);setHidden('pause',true);
  setHidden('match-end',true);setHidden('hud',false);
