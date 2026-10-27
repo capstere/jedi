@@ -58,4 +58,6 @@ jobs:
             hissrum-strike-sniper.png
             hissrum-strike-p9-hands.png
             hissrum-strike-blood-dwarfs.png
+            hissrum-strike-scoreboard-mobile.png
+            hissrum-strike-combat-feedback.png
           if-no-files-found: ignore
