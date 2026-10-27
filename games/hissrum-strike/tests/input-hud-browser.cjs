@@ -17,14 +17,16 @@ async function runInputHudPolishChecks(page,context){
    const held=await input();
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
    assert.equal((await input()).forward,held.forward,'second finger must not steal joystick');
-   await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[first]});
+   await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[second]});
    assert.equal((await input()).forward,held.forward,'other finger release must not release joystick owner');
    await touch.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
    assert.equal((await input()).forward,0,'OS cancel must neutralize joystick');
 
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first]});
-   await page.evaluate(()=>document.getElementById('move-pad').releasePointerCapture(window.__polishPointer));
+   // Apply pending capture first; cancelling a pending request emits no loss event.
    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...first,x:first.x+1}]});
+   await page.evaluate(()=>document.getElementById('move-pad').releasePointerCapture(window.__polishPointer));
+   await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...first,x:first.x+2}]});
    assert.equal((await input()).forward,0,'lost capture must neutralize held movement');
    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
 
