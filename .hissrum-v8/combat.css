@@ -1,0 +1,60 @@
+/* v8 combat readability: no extra aiming buttons, no enemy outlines. */
+#scoreboard-button{pointer-events:auto;border:0;border-top:2px solid #527c81;border-radius:3px;cursor:pointer;color:inherit;min-height:60px}
+#scoreboard-button:hover{background:rgba(17,61,69,.88)}
+#scoreboard-button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#ally-marks{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.ally-marker{position:absolute;left:0;top:0;text-align:center;will-change:transform;pointer-events:none;transition:opacity .14s}
+.ally-marker span{display:block;font:800 10px/1.2 Inter,sans-serif;color:#bcfff1;text-shadow:0 1px 4px #001d28,0 0 7px #001d28;white-space:nowrap;margin-bottom:4px}
+.ally-marker i{display:block;margin:auto;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #89f8db;filter:drop-shadow(0 1px 2px #00121d)}
+#damage-compass{position:absolute;left:50%;top:50%;width:164px;height:164px;transform:translate(-50%,-50%);pointer-events:none}
+#damage-compass>span{position:absolute;left:50%;top:50%;width:40px;height:164px;pointer-events:none}
+#damage-compass i{display:block;height:8px;border:2px solid #ffc3a8;border-radius:50% 50% 0 0;background:#d84e36;box-shadow:0 0 7px #682821}
+#hit[data-kind="body"]{color:#f6fff8}
+#hit[data-kind="head"]{color:#ffe281;text-shadow:0 0 7px #332806;font-weight:900}
+#hit[data-kind="kill"]{color:#ffb494;text-shadow:0 0 7px #46140b;font-weight:900}
+#combat-hit-label{position:absolute;left:50%;top:calc(50% - 38px);transform:translateX(-50%);color:#ffe3bf;text-shadow:0 1px 5px #00121c;font:800 10px/1.2 Inter,sans-serif;letter-spacing:.09em;white-space:nowrap;pointer-events:none}
+#combat-medal{position:absolute;left:50%;top:25%;transform:translateX(-50%);text-align:center;max-width:min(74vw,420px);padding:8px 14px;border-top:2px solid #91efce;border-radius:3px;background:rgba(4,25,33,.78);box-shadow:0 4px 18px #0003;pointer-events:none}
+#combat-medal strong,#combat-medal span,#combat-medal small{display:block}
+#combat-medal strong{font:800 21px/1.15 'Barlow Condensed',sans-serif;letter-spacing:.04em;color:#ecfff5}
+#combat-medal small{font:800 9px Inter,sans-serif;letter-spacing:.08em;color:#a4f4dc;margin-bottom:4px}
+#combat-medal span{font:600 10px Inter,sans-serif;color:#c1d5d6;margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#combat-medal[data-kind="assist"]{border-color:#a9cde4}
+#reload-meter{height:3px;width:100%;margin-top:5px;background:#253f48;overflow:hidden;border-radius:2px}
+#reload-meter i{display:block;height:100%;background:#9cf5dd;transform-origin:left;transform:scaleX(0)}
+.weapon-block.low-ammo strong{color:#ffd296}
+.score-card{width:min(94vw,620px);padding:24px;background:rgba(5,22,30,.96);border:1px solid #4d848a;border-radius:7px;margin:auto}
+.score-card h2{font:800 42px/1 'Barlow Condensed',sans-serif;margin:10px 0 14px}
+#scoreboard-summary{font:700 11px/1.5 Inter,sans-serif;color:#adeddc;margin-bottom:16px}
+.score-table{width:100%;border-collapse:collapse;font:600 13px/1.2 Inter,sans-serif}
+.score-table caption{font:500 11px Inter,sans-serif;color:#a4bbc3;text-align:left;padding:0 0 10px}
+.score-table th,.score-table td{text-align:right;padding:9px 7px;border-bottom:1px solid #29454e}
+.score-table th:first-child{text-align:left;max-width:210px;overflow-wrap:anywhere}
+.score-table thead{font-size:10px;letter-spacing:.06em;color:#b4d2d8}
+.score-table abbr{text-decoration:none}
+.score-table .score-team th{padding-top:14px;text-align:left;letter-spacing:.1em;color:#9bf5df;background:#10313b;font-size:10px}
+.score-table .score-team.counterAnalysts th{color:#ffc398}
+.score-table .is-player{background:#164239;color:#effff6}
+.score-table .is-dead{color:#9aadb6}
+.score-note{font:500 11px/1.5 Inter,sans-serif;color:#9bb5bf;margin:16px 0}
+@media(pointer:coarse) and (max-width:760px){
+ #scoreboard-button{min-height:59px}
+ .ally-marker span{font-size:9px}
+ #combat-medal{top:31%;padding:6px 10px;max-width:68vw}
+ #combat-medal strong{font-size:19px}
+ #combat-medal span{font-size:9px}
+ #combat-hit-label{font-size:9px}
+ .score-card{width:100%;padding:17px 12px}
+ .score-card h2{font-size:33px}
+ .score-table{font-size:11px}
+ .score-table th,.score-table td{padding:8px 5px}
+ .score-table th:first-child{max-width:155px}
+ #scoreboard-summary{font-size:10px}
+}
+@media(max-height:600px){
+ #combat-medal{top:22%;padding:4px 8px}
+ .score-card{padding:14px}
+ .score-table th,.score-table td{padding:6px}
+}
+@media(prefers-reduced-motion:reduce){.ally-marker{transition:none}}
+
+body.combat-medal-visible #notify{opacity:0!important}
