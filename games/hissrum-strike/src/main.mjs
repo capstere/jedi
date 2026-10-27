@@ -6,6 +6,8 @@ import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
 import {isAutoFireWeapon,resetAutoAim} from './fps/aim-controls.mjs?v=cartridge-tank-v9';
 import {GrenadeView} from './grenade-view.mjs';
+import {bindTouchControls} from './touch-controls.mjs';
+import {KillFeedView,drawPlayerHeading} from './hud-polish.mjs';
 import {CartridgeTankView} from './tank-view.mjs';
 import {TANK,drivingTank,nearTank,toggleTank,tankFits} from './fps/cartridge-tank.mjs';
 import {deathMotion} from './characters/death-motion.mjs';
@@ -18,6 +20,9 @@ import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
+const reducedMotionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+const killFeedView=new KillFeedView($('killfeed'));
+let touchControls=null;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065,autoFire:true,trajectory:true,allyMarkers:true,combatFeedback:true};
 try{settings.autoFire=localStorage.getItem('hissrum.autoFire')!=='off';settings.trajectory=localStorage.getItem('hissrum.trajectory')!=='off';}catch{}
@@ -57,6 +62,7 @@ function setupGraphics(){
   initViewWeapon();
   initTracers();
   addEventListener('resize',()=>{
+    resetControls(); // cancel old screen-space gestures after orientation/viewport changes
     camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
     if(weaponCamera){weaponCamera.aspect=innerWidth/innerHeight;weaponCamera.updateProjectionMatrix();}
     renderer.setSize(innerWidth,innerHeight);
@@ -271,6 +277,7 @@ function clearScope(){
  if(camera){camera.fov=coarse?84:76;camera.updateProjectionMatrix();}
 }
 function resetControls(){
+ touchControls?.reset();
  keys.clear();fire=false;touchFire=false;touchJump=false;touchDescend=false;interact=false;
  touchForward=0;touchStrafe=0;$('move-stick').style.transform='translate(0,0)';
  if(game?.player){resetAutoAim(game.player);game.player.fireHeld=false;game.player.requireFireRelease=false;}
@@ -558,7 +565,7 @@ function cameraFollow(dt){
    if(activeViewModel.visible){
      const pose=animateStrikeViewWeapon(activeViewModel,p,game.state.time,dt,{
        shotAt:weaponShotAt,switchAt:weaponSwitchAt,recoil:gunKick,
-       reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches
+       reducedMotion:reducedMotionQuery.matches
      });
      muzzle.position.copy(pose.muzzle);
    }
@@ -629,20 +636,12 @@ function drawMinimap(){
  const t=game.state.tank;if(t){const [x,y]=xy(t.alive?t:t.home);ctx.fillStyle=t.alive?'#ffe589':'#978d82';ctx.fillRect(x-3,y-3,6,6);}
  if(game.player.alive){
    const a=game.player,[x,y]=xy(a);
-   ctx.fillStyle='#fff';ctx.beginPath();
-   ctx.moveTo(x-Math.sin(a.yaw)*7,y-Math.cos(a.yaw)*7);
-   ctx.lineTo(x+Math.sin(a.y+.6)*6,y+Math.cos(a.y+.6)*6);
-   ctx.lineTo(x+Math.sin(a.y-.6)*6,y+Math.cos(a.y-.6)*6);
-   ctx.closePath();ctx.fill();
+   ctx.fillStyle='#fff';drawPlayerHeading(ctx,x,y,a.yaw);
  }
 }
 function renderFeed(now){
  while(feed.length&&feed[feed.length-1].until<now)feed.pop();
- const node=$('killfeed');node.replaceChildren();
- for(const item of feed){
-   const div=document.createElement('div');div.textContent=item.name;
-   div.className=item.team==='analysts'?'friendly':'';node.append(div);
- }
+ killFeedView.render(feed);
 }
 function refreshHUD(now){
  if(!game)return;
@@ -787,56 +786,38 @@ document.addEventListener('pointerlockchange',()=>{
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 function setupTouch(){
- const pad=$('move-pad'),stick=$('move-stick'),look=$('look-zone');
- let movePointer=null,lookPointer=null,lookX=0,lookY=0;
- function padMove(e){
-   const rect=pad.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-   const x=clamp((e.clientX-cx)/45,-1,1),y=clamp((e.clientY-cy)/45,-1,1);
-   const len=Math.hypot(x,y),f=len>1?1/len:1;
-   touchStrafe=x*f;touchForward=-y*f;
-   stick.style.transform='translate('+touchStrafe*38+'px,'+(-touchForward)*38+'px)';
- }
- pad.addEventListener('pointerdown',e=>{e.preventDefault();movePointer=e.pointerId;pad.setPointerCapture(movePointer);padMove(e);});
- pad.addEventListener('pointermove',e=>{if(e.pointerId===movePointer)padMove(e);});
- function resetPad(e){if(e.pointerId!==movePointer)return;movePointer=null;touchStrafe=touchForward=0;stick.style.transform='translate(0,0)';}
- pad.addEventListener('pointerup',resetPad);pad.addEventListener('pointercancel',resetPad);
- look.addEventListener('pointerdown',e=>{e.preventDefault();lookPointer=e.pointerId;lookX=e.clientX;lookY=e.clientY;look.setPointerCapture(lookPointer);});
- look.addEventListener('pointermove',e=>{
-   if(e.pointerId!==lookPointer||!active||paused)return;
-   const sense=settings.mobileSensitivity*(aiming?.46:1);
-   lookYaw-=(e.clientX-lookX)*sense;
-   lookPitch=clamp(lookPitch-(e.clientY-lookY)*sense,-1.48,1.48);
-   lookX=e.clientX;lookY=e.clientY;
- });
- const stopLook=e=>{if(e.pointerId===lookPointer)lookPointer=null;};
- look.addEventListener('pointerup',stopLook);look.addEventListener('pointercancel',stopLook);
- for(const button of document.querySelectorAll('[data-touch]')){
-   const action=button.dataset.touch;
-   button.addEventListener('pointerdown',e=>{
-     e.preventDefault();button.setPointerCapture(e.pointerId);
-     if(!active||paused)return;
+ touchControls=bindTouchControls({
+   pad:$('move-pad'),stick:$('move-stick'),look:$('look-zone'),
+   buttons:document.querySelectorAll('[data-touch]'),
+   enabled:()=>active&&!paused&&!shopOpen&&!scoreOpen,
+   onMove:(strafe,forward)=>{touchStrafe=strafe;touchForward=forward;},
+   onLook:(dx,dy)=>{
+     const sense=settings.mobileSensitivity*(aiming?.46:1);
+     lookYaw-=dx*sense;lookPitch=clamp(lookPitch-dy*sense,-1.48,1.48);
+   },
+   onPress:action=>{
      if(action==='fire')touchFire=true;
      if(action==='grenade')selectGrenade();
      if(action==='jump')touchJump=true;
      if(action==='descend')touchDescend=true;
      if(action==='interact'){
-       if(game&&active&&!paused&&(drivingTank(game)||nearTank(game))){toggleTank(game);clearScope();resetControls();syncSpecialHUD();}
+       if(game&&(drivingTank(game)||nearTank(game))){toggleTank(game);clearScope();resetControls();syncSpecialHUD();}
        else interact=true;
      }
      if(action==='fly')toggleFlight();
      if(action==='scope')setScope(!aiming);
      if(action==='reload')game?.reload();
      if(action==='switch')game?.select('last');
-   });
-   const reset=()=>{
+   },
+   onRelease:action=>{
      if(action==='fire')touchFire=false;
      if(action==='jump')touchJump=false;
      if(action==='descend')touchDescend=false;
      if(action==='interact')interact=false;
-   };
-   button.addEventListener('pointerup',reset);button.addEventListener('pointercancel',reset);
- }
+   }
+ });
 }
+
 $('scoreboard-button').addEventListener('click',openScoreboard);
 $('end-stats').addEventListener('click',openScoreboard);
 $('scoreboard-close').addEventListener('click',closeScoreboard);
@@ -929,6 +910,7 @@ try{
      effectiveAimPitch:game?.player?.pitch??null,
      recoil:game?.player?.aimRecoil?{...game.player.aimRecoil}:null,
      shopOpen,money:game?.player?.money??0,
+     touchInput:{forward:touchForward,strafe:touchStrafe,fire:touchFire,jump:touchJump,descend:touchDescend,interact},
      scoreboardOpen:scoreOpen,allyMarkersEnabled:settings.allyMarkers,combatFeedbackEnabled:settings.combatFeedback,
      combatPresentation:combatHUD?.diagnostics()??null,
      maxFlyingBots:game?.config.maxFlyingBots??0,
