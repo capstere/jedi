@@ -148,7 +148,13 @@ function syncCharacters(dt){
    const recentlyDead=corpseShouldShow(actor,game.state.time);
    visual.visible=(actor.alive||recentlyDead)
      &&(watchingPlayerDeath()&&actor.isPlayer||shouldRenderAvatar(actor,cameraActor));
-   if(!visual.visible)continue;
+   // Even a body currently outside the camera starts the genuine Death01
+   // action. This avoids delayed animation when the player turns around.
+   if(!visual.visible){
+     if(recentlyDead&&!visual.userData.avatar.death)
+       poseAuthoredDeath(visual.userData.avatar,actor,game.state.time);
+     continue;
+   }
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
    // Authored crouch and jump clips handle body pose; do not squash the mesh
