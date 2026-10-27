@@ -3,6 +3,7 @@
 const {chromium}=require('playwright');
 const {PNG}=require('pngjs');
 const assert=require('node:assert/strict');
+const {runInputHudPolishChecks}=require('./input-hud-browser.cjs');
 const {spawn}=require('node:child_process');
 const {setTimeout:sleep}=require('node:timers/promises');
 const http=require('node:http');
@@ -386,6 +387,7 @@ async function launchReadyPage(context,tag,issues){
   await mobile.evaluate(()=>window.__hissrumVisualTest.previewCombatFeedback());
   await mobile.screenshot({timeout:90000,path:'hissrum-strike-combat-feedback.png'});
   console.log('PASS: Mobile scoreboard toggle, readable reload progress, persistent ally/feedback preferences and no extra aiming buttons');
+  await runInputHudPolishChecks(mobile,phone);
   // Cartridge tank: original GLB pad, actual touch controls and real Game damage.
   assert.ok(await mobile.evaluate(()=>window.__hissrumVisualTest.prepareTank()));
   await mobile.waitForFunction(()=>document.querySelector('[data-touch="interact"]').textContent==='KÖR',null,{timeout:15000});

@@ -215,3 +215,28 @@ poänganimation som ändrar spelresultatet.
 `src/tank-view.mjs` visar modellen och effekter med fasta pooler.
 `tests/cartridge-tank.test.mjs` testar collision, fiendepåkörning, vänligt skydd,
 kanon, pansar, vanlig Game-poängräkning, fordonsförstörelse och fast respawn.
+
+## Avgränsad putsning: touch och HUD (v10)
+
+- En aktiv pekare per touchkontroll. Ett andra finger kan inte ta över styrspaken
+  eller släppa någon annans nedtryckta knapp. Avbruten pekning och förlorad
+  pointer capture nollställer rörelse/eld. Paus, butik, resultattavla och ändrad
+  skärmstorlek avslutar gamla gester; fortsättning kräver en ny beröring.
+- En liten radiell dödzon i styrspaken tar bort mikrorörelser nära mitten.
+  Diagonal rörelse är fortfarande normaliserad. Styrplattans mått läses en gång
+  per gest, inte vid varje pointermove.
+- Elimineringsloggen återanvänder fem DOM-rader och uppdaterar bara ändrad text,
+  färgklass eller synlighet. Oförändrad logg orsakar inga DOM-skrivningar.
+- Minimapens spelarpil använder heading för alla tre hörn; tidigare använde
+  två hörn flyghöjden. Pilen vrider sig nu utan att deformeras när man flyger.
+- Preferensen för reducerad rörelse läses från en återanvänd MediaQueryList
+  i stället för att skapa en ny i varje vapenbildruta.
+
+Tester: `input-hud-polish.test.mjs` mäter antal layoutläsningar/DOM-skrivningar
+samt kontrollerar pekarägande, avbrott, dödzon och pilens geometri.
+`input-hud-browser.cjs` provar riktiga Chromium-touchhändelser och capture loss
+mot det laddade spelet. Dessa testresultat är inte ett påstående om viss FPS
+på fysisk iPhone. Vapenbalans, kartans kollisioner och Cartridge-bilen är bevarade.
+
+Pekarhanteringen följer W3C Pointer Events (`https://w3c.github.io/pointerevents/`)
+och `lostpointercapture`-livscykeln.
