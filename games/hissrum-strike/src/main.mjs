@@ -7,6 +7,7 @@ import {ActionVisuals} from './action-visuals.mjs';
 import {isAutoFireWeapon,resetAutoAim} from './fps/aim-controls.mjs?v=cartridge-tank-v9';
 import {GrenadeView} from './grenade-view.mjs';
 import {bindTouchControls} from './touch-controls.mjs';
+import {createGameViewportSync} from './viewport-sync.mjs';
 import {KillFeedView,drawPlayerHeading} from './hud-polish.mjs';
 import {CartridgeTankView} from './tank-view.mjs';
 import {TANK,drivingTank,nearTank,toggleTank,tankFits} from './fps/cartridge-tank.mjs';
@@ -45,11 +46,12 @@ function setupGraphics(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color('#42575e');
   scene.fog=null;
-  camera=new THREE.PerspectiveCamera(coarse?84:76,innerWidth/innerHeight,.045,175);
+  camera=new THREE.PerspectiveCamera(coarse?84:76,1,.045,175);
   camera.rotation.order='YXZ';
   renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,coarse?1.25:1.65));
-  renderer.setSize(innerWidth,innerHeight);
+  // Do not call setSize(innerWidth,innerHeight) here: its default inline
+  // canvas width can remain narrower than iPhone Safari's landscape HUD.
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.72;
@@ -61,11 +63,24 @@ function setupGraphics(){
   scene.add(camera);
   initViewWeapon();
   initTracers();
+  const syncViewport=createGameViewportSync({
+    canvas,renderer,cameras:[camera,weaponCamera],root:document.documentElement
+  });
+  syncViewport();
+  // ResizeObserver catches CSS viewport changes even when the browser does
+  // not send a window resize (notably iOS landscape and toolbar transitions).
+  new ResizeObserver(syncViewport).observe(canvas);
   addEventListener('resize',()=>{
-    resetControls(); // cancel old screen-space gestures after orientation/viewport changes
-    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
-    if(weaponCamera){weaponCamera.aspect=innerWidth/innerHeight;weaponCamera.updateProjectionMatrix();}
-    renderer.setSize(innerWidth,innerHeight);
+    resetControls(); // prevent stale touch coordinates after actual rotation
+    syncViewport();
+  });
+  window.visualViewport?.addEventListener('resize',syncViewport);
+  addEventListener('orientationchange',()=>{
+    resetControls();
+    requestAnimationFrame(syncViewport);
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden)requestAnimationFrame(syncViewport);
   });
 }
 
@@ -896,6 +911,15 @@ try{
        Math.min(...game.actors.flatMap((a,i)=>game.actors.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.z-b.z)))):null,
      flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
      fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes,
+     viewport:(()=>{
+       const rect=canvas.getBoundingClientRect();
+       const sight=$('crosshair').getBoundingClientRect();
+       return {canvas:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},
+         reticle:{x:sight.x+sight.width/2,y:sight.y+sight.height/2},
+         cameraAspect:camera.aspect,weaponAspect:weaponCamera.aspect,
+         inlineCanvasWidth:canvas.style.width,inlineCanvasHeight:canvas.style.height,
+         pixelWidth:canvas.width,pixelHeight:canvas.height};
+     })(),
      dwarfCount:game?.state.wanderers?.length||0,
      visibleDwarfs:actionVisuals?.dwarfs?.size||0,
      flyingBots:game?.actors?.filter(a=>a.bot&&a.alive&&a.flying).length||0,
