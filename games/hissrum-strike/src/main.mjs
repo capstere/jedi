@@ -702,8 +702,8 @@ try{
      decodedSounds:audioSystem?.buffers.size||0,
      audioErrors:audioSystem?.errors.slice(0,3)||[]
    });
-   // Read-only visual QA plus a controlled hit on a synthetic event, available
-   // ONLY when ?test is explicitly present. Never mutates a player's HP.
+   // QA hooks are available ONLY when ?test is explicitly requested.
+   // Death previews mutate test fixtures only, never the production match.
    window.__hissrumVisualTest={
      paintDamage:()=>{
        if(!game||!bloodEffects)return false;
@@ -723,6 +723,22 @@ try{
          x:game.player.x,y:game.player.y+1.5,z:game.player.z}],
          {...game.player,y:game.player.y+1.5},game.state.time);
        return audioSystem.stats.played>0;
+     },
+     previewNpcDeath:()=>{
+       // Test-only simulation. The normal game still controls real health,
+       // scoring, respawn and deaths through its own damage system.
+       const a=game?.actors.find(a=>a.alive&&a.bot&&!a.isPlayer);
+       if(!a)return null;
+       Object.assign(a,{alive:false,hp:0,deathAt:game.state.time,
+         respawnAt:game.state.time+5});
+       return a.id;
+     },
+     previewPlayerDeath:()=>{
+       const a=game?.player;
+       if(!a?.alive)return false;
+       Object.assign(a,{alive:false,hp:0,deathAt:game.state.time,
+         respawnAt:game.state.time+5});
+       return true;
      }
    };
  }
