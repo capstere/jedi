@@ -38,6 +38,17 @@ test('all ten mini-spawns and mission anchors share a connected floor',()=>{
   assert.equal(anchors.analysts.length,5);
   assert.equal(anchors.counterAnalysts.length,5);
   assert.equal(anchors.hostages.length,2);
+  const spawns=[...anchors.analysts,...anchors.counterAnalysts];
+  const separation=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+  for(let i=0;i<spawns.length;i++)for(let j=i+1;j<spawns.length;j++)
+    assert.ok(separation(spawns[i],spawns[j])>2.3,
+      'all actors must begin spread apart on connected real floor, not piled up');
+  const analystSpread=Math.max(...anchors.analysts.flatMap(a=>
+    anchors.analysts.map(b=>separation(a,b))));
+  const counterSpread=Math.max(...anchors.counterAnalysts.flatMap(a=>
+    anchors.counterAnalysts.map(b=>separation(a,b))));
+  assert.ok(analystSpread>5.5,'analyst team must be physically dispersed');
+  assert.ok(counterSpread>5.5,'counter team must be physically dispersed');
   for(const p of [...anchors.analysts,...anchors.counterAnalysts,anchors.bomb,...anchors.hostages]){
     assert.ok(world.canOccupy(p.x,p.z,.2));
     assert.ok(nav.findPath(anchors.analysts[0],p).length>0);
