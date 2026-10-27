@@ -386,6 +386,41 @@ async function launchReadyPage(context,tag,issues){
   await mobile.evaluate(()=>window.__hissrumVisualTest.previewCombatFeedback());
   await mobile.screenshot({timeout:90000,path:'hissrum-strike-combat-feedback.png'});
   console.log('PASS: Mobile scoreboard toggle, readable reload progress, persistent ally/feedback preferences and no extra aiming buttons');
+  // Cartridge tank: original GLB pad, actual touch controls and real Game damage.
+  assert.ok(await mobile.evaluate(()=>window.__hissrumVisualTest.prepareTank()));
+  await mobile.waitForFunction(()=>document.querySelector('[data-touch="interact"]').textContent==='KÖR',null,{timeout:15000});
+  await mobile.locator('[data-touch="interact"]').tap();
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().tank?.driving,null,{timeout:15000});
+  const tankBefore=await mobile.evaluate(()=>window.__hissrumDiagnostics().tank);
+  assert.equal(tankBefore.hp,900);assert.equal(tankBefore.visible,true);
+  assert.equal(await mobile.locator('[data-touch="fire"]').isVisible(),true,'tank cannon stays manual');
+  assert.equal(await mobile.locator('[data-touch="fire"]').textContent(),'KANON');
+  const tankTouch=await phone.newCDPSession(mobile);
+  const pad=await mobile.locator('#move-pad').boundingBox();
+  await tankTouch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:pad.x+pad.width/2,y:pad.y+8,id:8}]});
+  try{
+    await mobile.waitForFunction(start=>{const t=window.__hissrumDiagnostics().tank;return Math.hypot(t.x-start.x,t.z-start.z)>.35;},tankBefore,{timeout:30000});
+  }finally{await tankTouch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+  const cannon=await mobile.locator('[data-touch="fire"]').boundingBox();
+  await tankTouch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cannon.x+24,y:cannon.y+25,id:9}]});
+  try{await mobile.waitForFunction(()=>Number.isFinite(window.__hissrumDiagnostics().tank.lastShot),null,{timeout:30000});}
+  finally{await tankTouch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await tankTouch.detach();}
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-cartridge-tank-mobile.png'});
+  assert.equal(await mobile.evaluate(()=>window.__hissrumVisualTest.damageTank(80)),true);
+  assert.ok((await mobile.evaluate(()=>window.__hissrumDiagnostics().tank)).hp<900);
+  // First leave through real UI, preserving on-foot weapons, then re-enter.
+  await mobile.locator('[data-touch="interact"]').tap();
+  await mobile.waitForFunction(()=>!window.__hissrumDiagnostics().tank.driving,null,{timeout:15000});
+  await mobile.locator('[data-touch="interact"]').tap();
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().tank.driving,null,{timeout:15000});
+  await mobile.evaluate(()=>window.__hissrumVisualTest.damageTank(5000));
+  await mobile.waitForFunction(()=>!window.__hissrumDiagnostics().tank.alive&&window.__hissrumDiagnostics().playerDeathCamera,null,{timeout:15000});
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-cartridge-wreck.png'});
+  assert.equal(await mobile.evaluate(()=>window.__hissrumVisualTest.advanceVehicleRespawn()),2);
+  const reborn=await mobile.evaluate(()=>window.__hissrumDiagnostics().tank);
+  assert.equal(reborn.hp,900);assert.equal(reborn.alive,true);assert.equal(reborn.driverId,null);
+  assert.deepEqual({x:reborn.x,y:reborn.y,z:reborn.z,yaw:reborn.yaw},reborn.home);
+  console.log('PASS: Real GLB Cartridge tank, manual mobile cannon, drive/exit, armor destruction, driver Death01 and fixed-pad auto-respawn');
   assert.deepEqual(issues,[],'Unexpected browser errors/network failures');
   console.log('PASS: Real Hissrum V5 GLB, CC0 sound decoding, blood splashes, eight dwarfs, autonomous flying bots, iPhone volume and flight controls, pause/resume');
  }finally{

@@ -284,6 +284,9 @@ export class AudioSystem {
       case 'flash': this.sample('laserSmall_000', sound, .22, 1.5, 0, .35); this.noise(sound, .13, .36, 5600); break;
       case 'rocket-explosion':
       case 'he': this.sample('explosionCrunch_000', sound, .8, .9, 0, 1.8); this.sample('lowFrequency_explosion_000', sound, .65, 1, 0, 1.8); break;
+      case 'tank-fire': this.sample('explosionCrunch_000',sound,.5,1.35,0,.65);this.tone(sound,95,.24,.28,'triangle',40);break;
+      case 'tank-hit': this.sample('impactMetal_medium_000',sound,.35,.8);break;
+      case 'tank-enter': case 'tank-exit': this.sample('impactMetal_light_000',sound,.25,1);break;
       case 'bot-takeoff': this.noise(sound,.28,.12,3400);this.tone(sound,510,.17,.08,'sine',720);break;
       case 'bot-landed': this.sample('impactSoft_medium_000',sound,.24,1.15);break;
       case 'plant': this.sample('computerNoise_000', sound, .1, 1.3, 0, .5); this.tone(sound, 520, .08, .13); break;

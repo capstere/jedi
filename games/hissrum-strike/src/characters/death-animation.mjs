@@ -3,10 +3,11 @@
  * physics, or modifications to authoritative combat/death state.
  */
 import * as THREE from 'three';
+import {deathMotion} from './death-motion.mjs';
 import {posedBounds} from './character-library.mjs';
 
 export const CORPSE_VISIBLE_SECONDS=6.5;
-export const PLAYER_DEATH_CAMERA_SECONDS=1.35;
+export const PLAYER_DEATH_CAMERA_SECONDS=1.65;
 export function deathAge(actor,time){
   return actor?.alive===false&&Number.isFinite(actor?.deathAt)
     ?time-actor.deathAt:Infinity;
@@ -33,13 +34,14 @@ export function poseAuthoredDeath(avatar,actor,time){
  if(!(age>=0&&age<CORPSE_VISIBLE_SECONDS))return false;
  startAuthoredDeath(avatar,actor);
  const duration=avatar.death.action.getClip().duration;
- const posedTime=Math.min(duration-.001,Math.max(0,age*3));
+ const reaction=deathMotion(actor,age);
+ const posedTime=Math.min(duration-.001,Math.max(0,reaction.progress*duration));
  avatar.mixer.setTime(posedTime);
- avatar.holder.rotation.y=Math.PI;
+ avatar.holder.rotation.set(reaction.pitch,Math.PI,reaction.roll);
  avatar.holder.scale.setScalar(avatar.scale);
  // Sample posed geometry at most five times during the fall, then retain its
  // settled bounds to keep death animations cheap for many bots on iPhones.
- const bucket=Math.min(5,Math.floor(age/.17));
+ const bucket=Math.min(8,Math.floor(age/.19));
  if(bucket!==avatar.death.lastFloorSample){
    avatar.root.updateMatrixWorld(true);
    const bounds=posedBounds(avatar.root);
@@ -58,5 +60,5 @@ export function resumeAuthoredAfterRespawn(avatar){
  avatar.time=null;avatar.x=null;avatar.z=null;
  avatar.activeBase=null;avatar.activeUpper=null;
  avatar.holder.position.set(0,avatar.groundOffset,0);
- avatar.holder.rotation.y=Math.PI;
+ avatar.holder.rotation.set(0,Math.PI,0);
 }
