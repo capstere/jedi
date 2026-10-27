@@ -154,7 +154,11 @@ async function launchReadyPage(context,tag,issues){
   const origin=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.equal(origin.flying,true,'F enables flight');
   await page.keyboard.down('Space');
-  await page.waitForTimeout(700);
+  // Software WebGL can render only a few frames per wall-clock second with
+  // the full imported hand rig. Wait for actual simulation height change.
+  await page.waitForFunction(target=>
+    window.__hissrumDiagnostics()?.player?.y>target,
+    origin.player.y+.085,{timeout:22000});
   await page.keyboard.up('Space');
   const ascended=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(ascended.player.y>origin.player.y+.07,'Space should ascend without jumping off tape');
