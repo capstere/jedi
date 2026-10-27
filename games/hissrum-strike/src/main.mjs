@@ -6,6 +6,7 @@ import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
 import {isAutoFireWeapon,resetAutoAim} from './fps/aim-controls.mjs';
 import {GrenadeView} from './grenade-view.mjs';
+import {CombatHUD} from './combat-hud.mjs?v=combat-hud-v8';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
 import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
 import {makeWeapon as createStrikeWorldWeapon} from './weapon-kit/model-primitives.mjs';
@@ -15,12 +16,13 @@ import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
-const settings={sensitivity:.0021,mobileSensitivity:.0065,autoFire:true,trajectory:true};
+const settings={sensitivity:.0021,mobileSensitivity:.0065,autoFire:true,trajectory:true,allyMarkers:true,combatFeedback:true};
 try{settings.autoFire=localStorage.getItem('hissrum.autoFire')!=='off';settings.trajectory=localStorage.getItem('hissrum.trajectory')!=='off';}catch{}
-let shopOpen=false,grenadeView=null;
+try{settings.allyMarkers=localStorage.getItem('hissrum.allyMarkers')!=='off';settings.combatFeedback=localStorage.getItem('hissrum.combatFeedback')!=='off';}catch{}
+let shopOpen=false,grenadeView=null,combatHUD=null,scoreOpen=false,scoreReturn='game';
 let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponStage,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
-let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
+let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
 let audioSystem=null,bloodEffects=null,actionVisuals=null,soundEnabled=true;
 
@@ -266,6 +268,25 @@ function updateControlSettings(){
  for(const id of ['trajectory-mode','trajectory-pause'])$(id).value=settings.trajectory?'on':'off';
  resetControls();if(game)syncSpecialHUD();
 }
+function updateReadabilitySettings(){
+ for(const id of ['ally-marks-mode','ally-marks-pause'])$(id).value=settings.allyMarkers?'on':'off';
+ for(const id of ['combat-feedback-mode','combat-feedback-pause'])$(id).value=settings.combatFeedback?'on':'off';
+ combatHUD?.hide();
+}
+function openScoreboard(){
+ if(!game||shopOpen||scoreOpen||(!active&&game.phase!=='match'))return;
+ scoreReturn=game.phase==='match'?'end':paused?'pause':'game';
+ if(active&&!paused)pauseGame();
+ scoreOpen=true;setHidden('pause',true);setHidden('match-end',true);
+ combatHUD?.renderScoreboard(game);setHidden('scoreboard',false);$('scoreboard-close').focus();
+}
+function closeScoreboard(){
+ if(!scoreOpen)return;
+ scoreOpen=false;setHidden('scoreboard',true);
+ if(scoreReturn==='end'){setHidden('match-end',false);$('end-stats').focus();}
+ else if(scoreReturn==='pause'){setHidden('pause',false);$('resume').focus();}
+ else resumeGame();
+}
 function selectGrenade(){
  if(!game?.player?.alive||!active||paused)return;
  if(!game.select('grenade'))notice('INGA GRANATER · ÖPPNA KÖP / B',2);
@@ -348,6 +369,7 @@ function configureSound(value,unlock=true){
 function toggleSound(){configureSound(!soundEnabled);}
 function startGame(){
  if(!world)return;
+ scoreOpen=false;setHidden('scoreboard',true);combatHUD?.reset();feed.length=0;
  shopOpen=false;setHidden('shop',true);resetControls();grenadeView?.clear();
  clearCharacters();
  const mode=$('mode').value,difficulty=$('difficulty').value,loadout=$('loadout').value;
@@ -387,7 +409,7 @@ function requestLock(){
 }
 function pauseGame(){
  if(!game||!active||paused)return;
- resetControls();grenadeView?.update(game,false);
+ resetControls();grenadeView?.update(game,false);combatHUD?.hide();
  paused=true;game.pause(true);audioSystem?.reset();keys.clear();fire=false;touchFire=false;interact=false;touchDescend=false;
  clearScope();
  setHidden('pause',false);setHidden('touch-controls',true);
@@ -395,7 +417,7 @@ function pauseGame(){
 }
 function resumeGame(){
  if(!game||!active)return;
- resetControls();setHidden('shop',true);shopOpen=false;
+ resetControls();setHidden('shop',true);shopOpen=false;scoreOpen=false;setHidden('scoreboard',true);
  paused=false;game.pause(false);setHidden('pause',true);
  if(soundEnabled)void audioSystem?.unlock().catch(e=>console.warn('[Hissrum audio]',e));
  setHidden('touch-controls',!coarse);
@@ -403,6 +425,7 @@ function resumeGame(){
  if(!coarse)requestLock();
 }
 function mainMenu(){
+ scoreOpen=false;setHidden('scoreboard',true);combatHUD?.reset();
  resetControls();shopOpen=false;setHidden('shop',true);grenadeView?.clear();
  active=false;paused=false;if(game)game.pause(true);
  audioSystem?.reset();bloodEffects?.clear();actionVisuals?.clear();
@@ -423,6 +446,7 @@ function addKill(event){
 }
 function updateEvents(){
  const events=game.drainEvents();
+ combatHUD?.handle(events,game);
  actionVisuals?.events(events,game);
  bloodEffects?.handle(events,game);
  if(audioSystem){
@@ -439,7 +463,6 @@ function updateEvents(){
    if(event.type==='throw'&&event.actorId===game.player.id){fire=false;touchFire=false;}
 
    if(event.type==='kill')addKill(event);
-   if(event.type==='combat-hit'&&event.actorId===game.player.id)hitUntil=performance.now()+170;
    if(event.type==='damage'&&event.actorId===game.player.id)damageUntil=performance.now()+220;
    if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;weaponShotAt=game.state.time;}
    if(event.type==='reload'&&event.actorId===game.player.id)notice('LADDAR OM',1.4);
@@ -621,7 +644,6 @@ function refreshHUD(now){
  if(!p.alive){const at=p.respawnAt;const time=Number.isFinite(at)?' · '+Math.max(0,Math.ceil(at-s.time))+'s':' · NÄSTA RUNDA';
    $('spectate-name').textContent=(game.spectator?.name||'LAGKAMRAT')+time;}
  $('notify').style.opacity=now<noticeUntil?'1':'0';
- $('hit').style.opacity=now<hitUntil?'1':'0';
  $('damage').style.boxShadow=now<damageUntil?'inset 0 0 17vw rgba(255,40,30,.48)':'inset 0 0 17vw rgba(255,40,30,0)';
  renderFeed(now);drawMinimap();
  if(s.phase==='match'){
@@ -653,7 +675,10 @@ function frame(now){
    actionVisuals?.update(game,camera);
    bloodEffects?.update(game.state.time,dt,camera);
    if(now-lastHud>100){refreshHUD(now);lastHud=now;}
+   combatHUD?.update(game,camera,{enabled:active&&!paused,markers:settings.allyMarkers,
+     feedback:settings.combatFeedback,scope:aiming,weapon:WEAPONS[game.player.weapon]});
  }else{
+   combatHUD?.hide();
    if(world&&!game){
      const b=world.bounds,cx=(b.min.x+b.max.x)/2,cz=(b.min.z+b.max.z)/2;
      camera.position.set(cx+3,MINIATURE_SCALE*2.15,cz+(b.max.z-b.min.z)*.43);
@@ -673,8 +698,11 @@ function frame(now){
 }
 
 window.addEventListener('keydown',e=>{
- if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code))e.preventDefault();
- if(e.code==='Escape'){if(shopOpen)closeShop();else if(active&&!paused)pauseGame();return;}
+ if(e.code==='Tab'&&game&&((active&&!paused)||scoreOpen)){
+   e.preventDefault();if(!e.repeat){if(scoreOpen)closeScoreboard();else openScoreboard();}return;
+ }
+ if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+ if(e.code==='Escape'){if(scoreOpen)closeScoreboard();else if(shopOpen)closeShop();else if(active&&!paused)pauseGame();return;}
  if(!game||!active||paused||e.repeat)return;
  if(e.code==='KeyR')game.reload();
  if(e.code==='Digit1'||e.code==='Digit2'||e.code==='Digit3'||e.code==='Digit4')game.select(e.code.at(-1));
@@ -761,6 +789,18 @@ function setupTouch(){
    button.addEventListener('pointerup',reset);button.addEventListener('pointercancel',reset);
  }
 }
+$('scoreboard-button').addEventListener('click',openScoreboard);
+$('end-stats').addEventListener('click',openScoreboard);
+$('scoreboard-close').addEventListener('click',closeScoreboard);
+for(const id of ['ally-marks-mode','ally-marks-pause'])$(id).addEventListener('change',e=>{
+ settings.allyMarkers=e.target.value==='on';try{localStorage.setItem('hissrum.allyMarkers',settings.allyMarkers?'on':'off');}catch{}
+ updateReadabilitySettings();
+});
+for(const id of ['combat-feedback-mode','combat-feedback-pause'])$(id).addEventListener('change',e=>{
+ settings.combatFeedback=e.target.value==='on';try{localStorage.setItem('hissrum.combatFeedback',settings.combatFeedback?'on':'off');}catch{}
+ updateReadabilitySettings();
+});
+updateReadabilitySettings();
 $('shop-button').addEventListener('click',openShop);
 $('shop-close').addEventListener('click',closeShop);
 for(const id of ['auto-fire-mode','auto-fire-pause'])$(id).addEventListener('change',e=>{
@@ -797,6 +837,7 @@ try{
  grenadeView=new GrenadeView(scene,world);
  bloodEffects=new CombatEffects(scene,world,{blood:'standard'});
  audioSystem=new AudioSystem(world,{volume:.55,ambient:true});
+ combatHUD=new CombatHUD(document);
  if(coarse)$('blood-mode').value='reduced'; // preserve iPhone GPU budget
  configureSound(true,false);
  if(new URLSearchParams(location.search).has('test')){
@@ -837,6 +878,8 @@ try{
      effectiveAimPitch:game?.player?.pitch??null,
      recoil:game?.player?.aimRecoil?{...game.player.aimRecoil}:null,
      shopOpen,money:game?.player?.money??0,
+     scoreboardOpen:scoreOpen,allyMarkersEnabled:settings.allyMarkers,combatFeedbackEnabled:settings.combatFeedback,
+     combatPresentation:combatHUD?.diagnostics()??null,
      maxFlyingBots:game?.config.maxFlyingBots??0,
      grenadeSpeed:game?.config.playerGrenadeSpeed??0,
      trajectoryPoints:grenadeView?.pointCount??0,
@@ -857,7 +900,20 @@ try{
    });
    // QA hooks are available ONLY when ?test is explicitly requested.
    // Death previews mutate test fixtures only, never the production match.
+   let hudTestSerial=9000000;
    window.__hissrumVisualTest={
+     previewCombatFeedback:()=>{
+       const p=game?.player,enemy=game?.actors.find(a=>a.team!==p?.team);
+       if(!p?.alive||!enemy||!combatHUD)return false;
+       const time=game.state.time;
+       combatHUD.handle([
+         {type:'combat-hit',serial:++hudTestSerial,time,actorId:p.id,targetId:enemy.id,amount:25,head:true,lethal:true},
+         {type:'damage',serial:++hudTestSerial,time,actorId:p.id,sourceId:enemy.id,amount:10,sourcePosition:{x:p.x+4,z:p.z}},
+         {type:'combat-medal',serial:++hudTestSerial,time,actorId:p.id,title:'DOUBLE ELIMINATION',detail:'TEST · 2 i rad',points:100,kind:'kill'}
+       ],game);
+       combatHUD.update(game,camera,{enabled:true,markers:settings.allyMarkers,feedback:true,scope:aiming,weapon:WEAPONS[p.weapon]});
+       return true; // presentation only: no HP, kills, score or credit mutation
+     },
      prepareAutoFire:(weapon='sniper')=>{
        if(!game||!['sniper','smg','ar47','p9'].includes(weapon))return false;
        // TEST ONLY: actual original GLB visibility and actual Game.fire.

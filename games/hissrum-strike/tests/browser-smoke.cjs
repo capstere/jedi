@@ -73,6 +73,29 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.namedProps.length>=10,'must load original furnishings, not a blank proxy scene');
   assert.equal(diag.characterModelReady,true,'Cartridge Strike GLB avatars must load');
   assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
+  assert.equal(diag.allyMarkersEnabled,true);
+  assert.ok(diag.combatPresentation.markerIds.length>0,'living teammates need HUD markers');
+  assert.ok(diag.combatPresentation.markerIds.every(id=>id.startsWith('analysts-')&&id!=='analysts-0'),
+    'opponents must never receive ally markers');
+  const feedback=await page.evaluate(()=>{
+    const before=window.__hissrumDiagnostics();window.__hissrumVisualTest.previewCombatFeedback();
+    const after=window.__hissrumDiagnostics();return {before,after};
+  });
+  assert.equal(feedback.after.combatPresentation.hitKind,'kill');
+  assert.equal(feedback.after.combatPresentation.damageDirections,1);
+  assert.equal(feedback.after.combatPresentation.medalTitle,'DOUBLE ELIMINATION');
+  assert.equal(feedback.after.money,feedback.before.money,'presentation must not add credits');
+  assert.equal(await page.locator('#combat-hit-label').textContent(),'HUVUDTRÄFF · UTSLAGEN');
+  await page.keyboard.press('Tab');
+  await page.waitForSelector('#scoreboard:not([hidden])',{timeout:10000});
+  assert.equal(await page.locator('#scoreboard-rows tr[data-actor]').count(),10);
+  assert.equal(await page.locator('#scoreboard-rows .is-player').count(),1);
+  const stopped=(await page.evaluate(()=>window.__hissrumDiagnostics())).simulationTime;
+  await page.waitForTimeout(180);
+  assert.equal((await page.evaluate(()=>window.__hissrumDiagnostics())).simulationTime,stopped);
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(()=>!window.__hissrumDiagnostics().scoreboardOpen,null,{timeout:10000});
+  console.log('PASS: Riposte-inspired hostile hit feedback, immutable shot direction, teammate-only markers and authoritative 10-row scoreboard');
   assert.equal(diag.weaponModel,'sniper','original Scope 5 mesh must be selected');
   assert.equal(diag.viewmodelSource,'capstere/cartridge-strike');
   assert.equal(diag.viewmodelType,'fitted-gloves');
@@ -136,6 +159,7 @@ async function launchReadyPage(context,tag,issues){
   assert.equal(scoped.scopeActive,true,'Z opens the sniper scope');
   assert.ok(scoped.fov<65,'sniper should actually zoom camera');
   assert.equal(await page.locator('#scope-overlay').isVisible(),true);
+  await page.waitForFunction(()=>document.getElementById('ally-marks').hidden,null,{timeout:10000});
   await page.screenshot({timeout:90000,path:'hissrum-strike-sniper.png'});
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(100);
@@ -321,6 +345,47 @@ async function launchReadyPage(context,tag,issues){
   assert.equal(await mobile.locator('[data-touch="fire"]').textContent(),'KASTA');
   assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).grenadeSpeed,17);
   console.log('PASS: Mobile paid arsenal, deliberate grenade control and real-GLB ballistic preview');
+  // Readability controls are deliberately kept out of the mobile aiming area.
+  await mobile.locator('#scoreboard-button').tap();
+  await mobile.waitForSelector('#scoreboard:not([hidden])',{timeout:15000});
+  assert.equal(await mobile.locator('#scoreboard-rows tr[data-actor]').count(),10);
+  const scoreBounds=await mobile.locator('.score-card').boundingBox();
+  assert.ok(scoreBounds.width<=390&&scoreBounds.x>=0,'scoreboard fits portrait width');
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-scoreboard-mobile.png'});
+  await mobile.locator('#scoreboard-close').tap();
+  await mobile.locator('#pause-button').tap();
+  await mobile.locator('#ally-marks-pause').selectOption('off');
+  await mobile.locator('#combat-feedback-pause').selectOption('off');
+  await mobile.locator('#resume').tap();
+  let simple=await mobile.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(simple.allyMarkersEnabled,false);assert.equal(simple.combatFeedbackEnabled,false);
+  assert.equal(await mobile.locator('#ally-marks').isVisible(),false);
+  await mobile.locator('#pause-button').tap();
+  await mobile.locator('#ally-marks-pause').selectOption('on');
+  await mobile.locator('#combat-feedback-pause').selectOption('on');
+  await mobile.locator('#auto-fire-pause').selectOption('manual');
+  await mobile.locator('#resume').tap();
+  await mobile.evaluate(()=>window.__hissrumVisualTest.prepareAutoFire('smg'));
+  // Hold an actual touch until Game registers a shot. A tap can start
+  // and end between software-WebGL frames without ever being sampled.
+  const fireBounds=await mobile.locator('[data-touch="fire"]').boundingBox();
+  assert.ok(fireBounds);
+  const heldTouch=await phone.newCDPSession(mobile);
+  await heldTouch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{
+    x:fireBounds.x+fireBounds.width/2,y:fireBounds.y+fireBounds.height/2,id:7
+  }]});
+  try{
+    await mobile.waitForFunction(()=>window.__hissrumDiagnostics().magazine<30,null,{timeout:45000});
+  }finally{
+    await heldTouch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await heldTouch.detach();
+  }
+  await mobile.locator('[data-touch="reload"]').tap();
+  await mobile.waitForFunction(()=>!document.getElementById('reload-meter').hidden,null,{timeout:15000});
+  assert.ok(Number(await mobile.locator('#reload-meter').getAttribute('aria-valuenow'))>=0);
+  await mobile.evaluate(()=>window.__hissrumVisualTest.previewCombatFeedback());
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-combat-feedback.png'});
+  console.log('PASS: Mobile scoreboard toggle, readable reload progress, persistent ally/feedback preferences and no extra aiming buttons');
   assert.deepEqual(issues,[],'Unexpected browser errors/network failures');
   console.log('PASS: Real Hissrum V5 GLB, CC0 sound decoding, blood splashes, eight dwarfs, autonomous flying bots, iPhone volume and flight controls, pause/resume');
  }finally{
