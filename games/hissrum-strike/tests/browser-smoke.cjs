@@ -287,6 +287,19 @@ async function launchReadyPage(context,tag,issues){
   // Regression: mobile landscape after portrait (Safari can leave Three.js's
   // prior setSize inline width behind, making the crosshair miss canvas center).
   async function checkAimAlignment(label,expectedWidth){
+    // Safari and emulated Chromium can paint CSS with the NEW dimensions
+    // before ResizeObserver has had a chance to update the WebGL cameras.
+    // Wait for that backbuffer/projection update instead of assuming an
+    // orientation change becomes synchronous with setViewportSize().
+    await mobile.waitForFunction(expected=>{
+      const v=window.__hissrumDiagnostics()?.viewport;
+      if(!v)return false;
+      return Math.abs(v.canvas.width-expected)<1 &&
+        Math.abs(v.reticle.x-(v.canvas.x+v.canvas.width/2))<.6 &&
+        Math.abs(v.reticle.y-(v.canvas.y+v.canvas.height/2))<.6 &&
+        Math.abs(v.cameraAspect-v.canvas.width/v.canvas.height)<.005 &&
+        Math.abs(v.weaponAspect-v.cameraAspect)<.005;
+    },expectedWidth,{timeout:20000});
     const v=await mobile.evaluate(()=>window.__hissrumDiagnostics().viewport);
     const cx=v.canvas.x+v.canvas.width/2,cy=v.canvas.y+v.canvas.height/2;
     assert.ok(Math.abs(v.canvas.width-expectedWidth)<1,label+': wrong CSS canvas width '+v.canvas.width);
