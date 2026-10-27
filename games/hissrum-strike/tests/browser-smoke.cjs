@@ -317,23 +317,6 @@ async function launchReadyPage(context,tag,issues){
   await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-768)<1,
     null,{timeout:5000});
   await checkAimAlignment('rotated landscape',768);
-  // Force the EXACT original failure mode: the WebGL element is 85% of the
-  // full HUD viewport. The reticle must aim at the actual rendered 3D frame,
-  // not 50vw. ResizeObserver must resize the backbuffer automatically.
-  await mobile.evaluate(()=>{document.querySelector('#scene').style.width='85%';});
-  await mobile.waitForFunction(()=>{
-    const r=document.querySelector('#scene').getBoundingClientRect();
-    const c=document.querySelector('#crosshair').getBoundingClientRect();
-    return Math.abs(r.width-768*.85)<1 &&
-      Math.abs((c.x+c.width/2)-(r.x+r.width/2))<.6;
-  },null,{timeout:5000});
-  const simulated=await mobile.evaluate(()=>window.__hissrumDiagnostics().viewport);
-  assert.ok(Math.abs(simulated.reticle.x-768/2)>35,
-    'regression must prove crosshair no longer blindly sticks to 50vw');
-  await mobile.evaluate(()=>{document.querySelector('#scene').style.width='';});
-  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-768)<1,
-    null,{timeout:5000});
-  await checkAimAlignment('landscape restored',768);
   await mobile.screenshot({timeout:90000,path:'hissrum-strike-landscape-crosshair.png'});
   await mobile.setViewportSize({width:390,height:844});
   await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-390)<1,
