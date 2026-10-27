@@ -283,6 +283,50 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(zoom.fov<76);
   await mobile.locator('#scope-toggle').tap();
   await mobile.waitForTimeout(120);
+
+  // Regression: mobile landscape after portrait (Safari can leave Three.js's
+  // prior setSize inline width behind, making the crosshair miss canvas center).
+  async function checkAimAlignment(label,expectedWidth){
+    const v=await mobile.evaluate(()=>window.__hissrumDiagnostics().viewport);
+    const cx=v.canvas.x+v.canvas.width/2,cy=v.canvas.y+v.canvas.height/2;
+    assert.ok(Math.abs(v.canvas.width-expectedWidth)<1,label+': wrong CSS canvas width '+v.canvas.width);
+    assert.ok(Math.abs(v.reticle.x-cx)<.6,label+': horizontal crosshair offset '+(v.reticle.x-cx));
+    assert.ok(Math.abs(v.reticle.y-cy)<.6,label+': vertical crosshair offset '+(v.reticle.y-cy));
+    assert.ok(Math.abs(v.cameraAspect-v.canvas.width/v.canvas.height)<.005,label+': world camera aspect mismatch');
+    assert.ok(Math.abs(v.weaponAspect-v.cameraAspect)<.005,label+': weapon camera aspect mismatch');
+    assert.equal(v.inlineCanvasWidth,'',label+': WebGL must not set stale inline width');
+    assert.equal(v.inlineCanvasHeight,'',label+': WebGL must not set stale inline height');
+    assert.ok(v.pixelWidth>0&&v.pixelHeight>0,label+': rendering buffer exists');
+    return v;
+  }
+  await checkAimAlignment('portrait',390);
+  await mobile.setViewportSize({width:768,height:353});
+  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-768)<1,
+    null,{timeout:5000});
+  await checkAimAlignment('rotated landscape',768);
+  // Force the EXACT original failure mode: the WebGL element is 85% of the
+  // full HUD viewport. The reticle must aim at the actual rendered 3D frame,
+  // not 50vw. ResizeObserver must resize the backbuffer automatically.
+  await mobile.evaluate(()=>{document.querySelector('#scene').style.width='85%';});
+  await mobile.waitForFunction(()=>{
+    const r=document.querySelector('#scene').getBoundingClientRect();
+    const c=document.querySelector('#crosshair').getBoundingClientRect();
+    return Math.abs(r.width-768*.85)<1 &&
+      Math.abs((c.x+c.width/2)-(r.x+r.width/2))<.6;
+  },null,{timeout:5000});
+  const simulated=await mobile.evaluate(()=>window.__hissrumDiagnostics().viewport);
+  assert.ok(Math.abs(simulated.reticle.x-768/2)>35,
+    'regression must prove crosshair no longer blindly sticks to 50vw');
+  await mobile.evaluate(()=>{document.querySelector('#scene').style.width='';});
+  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-768)<1,
+    null,{timeout:5000});
+  await checkAimAlignment('landscape restored',768);
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-landscape-crosshair.png'});
+  await mobile.setViewportSize({width:390,height:844});
+  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-390)<1,
+    null,{timeout:5000});
+  await checkAimAlignment('portrait restored',390);
+  console.log('PASS: canvas, reticle, world/weapon cameras stay aligned through Safari-style portrait/landscape resizing');
   const rects=await mobile.evaluate(()=>{
     const ids=['move-pad','pause-button','health','ammo','look-zone','minimap'];
     const r={};
