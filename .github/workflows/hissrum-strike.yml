@@ -35,6 +35,8 @@ jobs:
           node --check games/hissrum-strike/tests/audio-work-browser.cjs
           node --check games/hissrum-strike/tests/effects-work-browser.cjs
           node --check games/hissrum-strike/tests/effects-work-browser-checks.mjs
+          node --check games/hissrum-strike/tests/high-flight-browser.cjs
+          node --check games/hissrum-strike/tests/high-flight-browser-checks.mjs
       - name: Run deterministic navigation and model tests
         run: node --test games/hissrum-strike/tests/*.test.mjs
 
@@ -68,6 +70,9 @@ jobs:
       - name: Verify combat effects match original movement and use linear cleanup
         timeout-minutes: 2
         run: node games/hissrum-strike/tests/effects-work-browser.cjs
+      - name: Verify proactive high flight and long routes against original GLB
+        timeout-minutes: 3
+        run: node games/hissrum-strike/tests/high-flight-browser.cjs
       - name: Load the real GLB and play a smoke round
         run: node games/hissrum-strike/tests/browser-smoke.cjs
       - uses: actions/upload-artifact@v4
