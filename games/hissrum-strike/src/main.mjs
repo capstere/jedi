@@ -6,6 +6,7 @@ import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
 import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
+import {makeWeapon as createStrikeWorldWeapon} from './weapon-kit/model-primitives.mjs';
 import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
   PLAYER_DEATH_CAMERA_SECONDS} from './characters/death-animation.mjs';
 
@@ -63,6 +64,11 @@ function makeCharacter(team,id){
  root.userData.avatar=avatar;
  root.userData.renderType='cartridge-strike-quaternius';
  root.add(avatar.holder);
+ if(team!=='hostage'){
+   const socket=new THREE.Group();socket.name='cartridge-strike-world-weapon-socket';
+   root.userData.weaponSocket=socket;root.userData.worldGuns=new Map();
+   root.add(socket);
+ }
  scene.add(root);
  return root;
 }
@@ -72,6 +78,38 @@ function clearCharacters(){
    if(visual.userData.avatar)disposeAvatar(visual.userData.avatar);
  }
  actors.clear();hostages.clear();
+}
+const wristScratch=new THREE.Vector3(),gripScratch=new THREE.Vector3();
+function syncOriginalWorldWeapon(visual,actor){
+ const socket=visual.userData.weaponSocket;
+ if(!socket)return;
+ const weapon=WEAPONS[actor.weapon];
+ if(!actor.alive||!weapon||!['primary','pistol','knife'].includes(weapon.slot)){
+   socket.visible=false;return;
+ }
+ if(visual.userData.worldWeapon!==actor.weapon){
+   for(const item of socket.children)item.visible=false;
+   let gun=visual.userData.worldGuns.get(actor.weapon);
+   if(!gun){
+     gun=createStrikeWorldWeapon(actor.weapon,{viewmodel:false});
+     visual.userData.worldGuns.set(actor.weapon,gun);
+     socket.add(gun);
+   }
+   gun.visible=true;visual.userData.worldWeapon=actor.weapon;
+ }
+ socket.visible=true;
+ // Borrow Cartridge Strike's third-person wrist socket calculation. The
+ // held gun follows the original animated Quaternius right-hand bone.
+ const hand=visual.userData.avatar.bones.get('hand_r');
+ if(!hand)return;
+ visual.updateWorldMatrix(true,true);
+ const wrist=visual.worldToLocal(hand.getWorldPosition(wristScratch));
+ const gun=visual.userData.worldGuns.get(actor.weapon);
+ socket.rotation.set(Math.max(-.65,Math.min(.65,actor.pitch||0)),0,0);
+ gripScratch.copy(gun.userData.grip||gripScratch.set(0,0,0))
+   .multiplyScalar(.85).applyEuler(socket.rotation);
+ socket.position.copy(wrist).sub(gripScratch);
+ socket.position.y-=.012;socket.position.z-=.043;
 }
 function poseCharacter(visual,actor,now){
  const avatar=visual.userData.avatar;
@@ -117,6 +155,8 @@ function syncCharacters(dt){
    // when Game changes its collision capsule height.
    visual.scale.setScalar(1);
    poseCharacter(visual,actor,game.state.time);
+   if(actor.alive)syncOriginalWorldWeapon(visual,actor);
+   else if(visual.userData.weaponSocket)visual.userData.weaponSocket.visible=false;
  }
  for(const hostage of game.hostages){
    let visual=hostages.get(hostage.id);
