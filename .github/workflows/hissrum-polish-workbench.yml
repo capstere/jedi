@@ -1,0 +1,29 @@
+name: Hissrum polish workbench
+on:
+  push:
+    branches: [perf/hissrum-small-polish-v10]
+    paths: ['.github/workflows/hissrum-polish-workbench.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export original scene and game sources
+        run: |
+          python3 - <<'PY'
+          import pathlib, zipfile
+          root=pathlib.Path('.')
+          with zipfile.ZipFile('hissrum-polish-source.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for p in sorted((root/'games/hissrum-strike').rglob('*')):
+              if p.is_file(): z.write(p,p.as_posix())
+            for name in ['Hissrum12_V5_med_39_objekt.glb','.github/workflows/hissrum-strike.yml']:
+              z.write(name,name)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hissrum-polish-source
+          path: hissrum-polish-source.zip
+          retention-days: 1
