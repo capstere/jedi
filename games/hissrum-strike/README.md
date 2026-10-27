@@ -135,3 +135,20 @@ Hissrum Strike använder nu **samma förstapersonsmodeller för vapen och hände
 - `src/navigation.mjs` fördelar Analyst- och Counter-spawnpunkterna med bred separation i samma verkligt sammanhängande GLB-golv. Varje teams fem startplatser sprids ut, inte klustras kring ett enda hörn. Ingen ny osynlig vägg tillkommer.
 
 Tillhörande Quaternius CC0-licens och andra originallicenser är bevarade under `licenses/`. De importerade vapenkällfilerna är spelvisualiseringar och inte teknisk vapendokumentation. Automatiska tester verifierar importerade modeller, faktisk fördelning över golvet och dödsanimationsuppspelning i Chromium samt i mobilstorlek.
+
+
+## v7 — mobil autoeld, progressiv rekyl och fältarsenal
+
+På pekskärm är automatisk eld standard och skjutknappen dold för kulvapen. Siktets exakta stråle måste träffa en levande, synlig fiende inom vapnets räckvidd. Väggar, rök, lagkamrater, gisslan och dvärgar blockerar avfyrningen. Ingen automatisk siktning används. Inställningen kan ändras före start eller i pausmenyn och sparas lokalt. Manuellt läge visar skjutknappen igen. Datorn behåller musavfyrning.
+
+Scope 5 kräver 0,32 sekunders sammanhängande sikte på samma fiende före automatisk avfyrning. Låsningen bryts vid förlorad sikt, byte av mål/vapen, paus, död eller omladdning. Automatisk halvautomatisk eld följer vapnets skottintervall och ammunition.
+
+Rekylen är Riposte-inspirerad, inte en exakt kopia. Både dator och mobil får kameraryck och stigande rekyl under salvor. Kamera och verklig skottstråle använder samma rekylvinkel. Kort paus återhämtar rekyl och spridning; nedåtsikte kan kompensera.
+
+KÖP / B öppnar en fältarsenal under aktiva Classic- och Endless-rundor. Den lokala botmatchen pausas under köp. Vapen, rustning och granater kostar krediter; otillräckliga krediter, fulla fack och redan utrustat vapen nekas utan debitering. Kill-belöning är fortsatt 300 krediter. Endless fyller inte längre på hela kreditpotten vid respawn när arsenalen används. Spelaren får köpa båda lagens gevär; botarnas befintliga köp- och uppdragsregler bevaras.
+
+G / GRANAT väljer eller växlar granat. Granater kastas alltid manuellt (KASTA-knappen visas även med autoeld). Spelarens kasthastighet är 17 i stället för 9 spelvärldsenheter per sekund; botarnas granater behåller originalhastigheten. Den valfria kastbanan använder samma gravitation, kollisionsstrålar, studsar och säkringstid som riktig grenadfysik. Synliga granatprojektiler ingår.
+
+Upp till fyra botar kan flyga samtidigt, med längre flygpass, kortare markpauser, höjdbyten och sidoförflyttning kring faktiskt observerade mål. Korta stilla intervall ger utrymme att sikta och skjuta. Rummets kollisioner gäller fortfarande och uppdragsbärare/skadade botar återgår till marken.
+
+Nya modulgränser: `src/fps/aim-controls.mjs`, `recoil.mjs`, `grenade-ballistics.mjs` och `src/grenade-view.mjs`. `tests/arsenal-v7.test.mjs` täcker siktspärrar, sniperfördröjning, återarmning, rekyl/återhämtning, betalning, granatfysik och flygning. Browser-smoke verifierar även pausinställning, dold/manuell knapp, faktiskt automatiskt skott i original-GLB:n och köp på dator/mobil.

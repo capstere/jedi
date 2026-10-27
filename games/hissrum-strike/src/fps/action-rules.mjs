@@ -1,3 +1,4 @@
+import {freshRecoil} from './recoil.mjs';
 import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs';
 /** Arcade rules. Simulation time only; visual/audio systems never own damage or respawns. */
 import {seededRandom, WEAPONS} from './config.mjs';
@@ -35,7 +36,9 @@ function equipEndless(g,a){
  const selection=a.isPlayer?(a.loadout||g.config.loadout||defaultWeapon):a.index===2?'smg':a.index===3?'shotgun':defaultWeapon;
  const id=WEAPONS[selection]?.slot==='primary'?selection:defaultWeapon;
  a.inventory=g.startInventory(a.team);a.inventory.primary=g.weaponItem(id);a.inventory.smoke=1;a.inventory.flash=1;a.inventory.he=1;
- a.weapon=id;a.lastWeapon=a.inventory.pistol.id;a.armor=60;a.money=g.config.maxMoney;a.loadout=id;
+ a.weapon=id;a.lastWeapon=a.inventory.pistol.id;a.armor=60;
+ a.money=g.config.liveShop&&a.isPlayer?Math.max(0,Math.min(g.config.maxMoney,a.money??g.config.startMoney)):g.config.maxMoney;
+ a.loadout=id;
 }
 /** Stay on the accepted connected floor; maximize distance and break sight, never open a room. */
 export function respawnPoint(g,a){
@@ -62,7 +65,7 @@ export function respawnPoint(g,a){
 export function respawnActor(g,a){
  const p=respawnPoint(g,a);if(!p)return false; // retry next tick, never overlap another capsule
  Object.assign(a,p,{hp:g.config.health,alive:true,height:g.config.standingHeight,vy:0,onGround:true,crouching:false,
-  reloadUntil:0,nextShot:g.state.time+.15,flashUntil:0,flash:0,flashStart:0,action:null,moving:0,distanceWalked:0,recoil:0,flying:false,
+  reloadUntil:0,nextShot:g.state.time+.15,flashUntil:0,flash:0,flashStart:0,action:null,moving:0,distanceWalked:0,recoil:0,flying:false,aimRecoil:freshRecoil(),rawAimYaw:p.yaw??0,rawAimPitch:0,autoAim:null,autoAimProgress:0,airPatrol:null,
   lastStep:g.state.time,fireHeld:false,interactHeld:false,jumpHeld:false,hurtTime:-Infinity,hurtDirection:null,deathAt:null,deathCause:null,
   respawnAt:null,spawnProtectedUntil:g.state.time+g.config.spawnProtection,blockedBy:null});
  equipEndless(g,a);a.bot=(!a.isPlayer||g.autoplay)?new BotController(g,a):null;
