@@ -6,6 +6,8 @@ import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
 import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
 import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
+import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
+  PLAYER_DEATH_CAMERA_SECONDS} from './characters/death-animation.mjs';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
@@ -72,14 +74,25 @@ function clearCharacters(){
  actors.clear();hostages.clear();
 }
 function poseCharacter(visual,actor,now){
+ const avatar=visual.userData.avatar;
+ if(!actor.alive){
+   if(corpseShouldShow(actor,now))poseAuthoredDeath(avatar,actor,now);
+   return;
+ }
+ if(avatar.death)resumeAuthoredAfterRespawn(avatar);
  // Keep mobile GPU skinning smooth without evaluating 12 rigs at 60 FPS.
  const period=coarse?1/24:1/45;
  if(visual.userData.nextPoseTime!==undefined&&now<visual.userData.nextPoseTime)return;
  visual.userData.nextPoseTime=now+period;
- animateAuthored(visual.userData.avatar,actor,now);
+ animateAuthored(avatar,actor,now);
+}
+function watchingPlayerDeath(){
+ const p=game?.player;
+ return p&&!p.alive&&deathAge(p,game.state.time)<PLAYER_DEATH_CAMERA_SECONDS;
 }
 function shouldRenderAvatar(actor,viewer){
- if(!viewer||actor===viewer)return false;
+ if(!viewer)return true;
+ if(actor===viewer)return false;
  const dx=actor.x-viewer.x,dz=actor.z-viewer.z,dist=Math.hypot(dx,dz);
  if(dist<3)return true;
  const yaw=viewer.yaw||0;
@@ -90,11 +103,13 @@ function shouldRenderAvatar(actor,viewer){
 }
 function syncCharacters(dt){
  if(!game)return;
- const cameraActor=spectateActor||game.player;
+ const cameraActor=watchingPlayerDeath()?null:(spectateActor||game.player);
  for(const actor of game.actors){
    let visual=actors.get(actor.id);
    if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
-   visual.visible=actor.alive&&shouldRenderAvatar(actor,cameraActor);
+   const recentlyDead=corpseShouldShow(actor,game.state.time);
+   visual.visible=(actor.alive||recentlyDead)
+     &&(watchingPlayerDeath()&&actor.isPlayer||shouldRenderAvatar(actor,cameraActor));
    if(!visual.visible)continue;
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
@@ -317,12 +332,28 @@ function updateEvents(){
 function cameraFollow(dt){
  const p=game?.player;
  if(!p)return;
- spectateActor=p.alive?p:game.spectator;
+ const deathWatch=watchingPlayerDeath();
+ spectateActor=deathWatch?p:(p.alive?p:game.spectator);
  const a=spectateActor||p;
- if(a.isPlayer){camera.rotation.set(a.pitch,a.yaw,0,'YXZ');}
- else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
- const bob=p.alive&&p.moving>.2&&!p.crouching?Math.sin(game.state.time*12)*Math.min(.032,p.moving*.008):0;
- camera.position.set(a.x,a.y+a.height-.13+bob,a.z);
+ if(deathWatch){
+   // Cartridge Strike's authored third-person death, briefly visible before
+   // switching to a surviving teammate. Keep collision/game state unchanged.
+   const age=Math.max(0,deathAge(p,game.state.time));
+   const zoom=1.25+Math.min(1,age/.85)*.85;
+   const angle=(p.yaw||0)+Math.PI*.62;
+   const target={x:p.x,y:p.y+.70,z:p.z};
+   camera.position.set(
+     target.x+Math.sin(angle)*zoom,
+     target.y+1.10+Math.min(.45,age*.28),
+     target.z+Math.cos(angle)*zoom);
+   camera.lookAt(target.x,target.y,target.z);
+ }else{
+   if(a.isPlayer)camera.rotation.set(a.pitch,a.yaw,0,'YXZ');
+   else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
+   const bob=p.alive&&p.moving>.2&&!p.crouching
+     ?Math.sin(game.state.time*12)*Math.min(.032,p.moving*.008):0;
+   camera.position.set(a.x,a.y+a.height-.13+bob,a.z);
+ }
  const scopeActive=p.alive&&p.weapon==='sniper'&&aiming;
  const desiredFov=scopeActive?19:(coarse?84:76);
  if(Math.abs(camera.fov-desiredFov)>.02){
@@ -642,6 +673,14 @@ try{
      stats:world.statistics,
      characterModelReady:charactersReady(),
      authoredVisuals:[...actors.values(),...hostages.values()].filter(v=>v.userData.renderType==='cartridge-strike-quaternius').length,
+     deathAnimations:[...actors.values()].filter(v=>!!v.userData.avatar?.death).length,
+     playerDeathCamera:!!watchingPlayerDeath(),
+     weaponModel:activeViewModel?.userData?.id??null,
+     viewmodelSource:activeViewModel?.userData?.hissrumSource??null,
+     viewmodelType:activeViewModel?.userData?.originalStrikeKit?'skinned-hands':'fitted-gloves',
+     viewmodelSkinnedHands:activeViewModel?.getObjectByName('kit-skinned-glove')?.isSkinnedMesh===true,
+     spawnSpread:game?.actors?.length?
+       Math.min(...game.actors.flatMap((a,i)=>game.actors.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.z-b.z)))):null,
      flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
      fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes,
      dwarfCount:game?.state.wanderers?.length||0,
