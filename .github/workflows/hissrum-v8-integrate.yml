@@ -33,13 +33,12 @@ jobs:
           find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
           node --check games/hissrum-strike/tests/browser-smoke.cjs
           node --test games/hissrum-strike/tests/*.test.mjs
-      - name: Commit production changes only
+      - name: Commit game changes only
         run: |
           set -euo pipefail
           git rm -r .hissrum-v8
-          git rm .github/workflows/hissrum-v8-integrate.yml
-          git add games/hissrum-strike .github/workflows/hissrum-strike.yml
+          git add games/hissrum-strike
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Integrate verified Riposte-inspired combat feedback and scoreboard; remove temporary tools'
+          git commit -m 'Integrate verified Riposte-inspired combat feedback and scoreboard'
           git push origin HEAD:refs/heads/feat/hissrum-riposte-combat-hud-v8
