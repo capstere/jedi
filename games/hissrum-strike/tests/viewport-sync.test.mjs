@@ -16,6 +16,7 @@ test('reticle origin is the actual 3D canvas center, not outer mobile viewport',
 
 test('renderer resizes the backbuffer without overriding responsive CSS',()=>{
  const dims={left:0,top:0,width:659,height:353};
+ const hud={left:0,top:0,width:768,height:353};
  const canvas={style:{width:'',height:''},getBoundingClientRect:()=>({...dims})};
  const calls=[],updates=[],values={};
  const renderer={setSize:(w,h,updateStyle)=>{
@@ -26,12 +27,12 @@ test('renderer resizes the backbuffer without overriding responsive CSS',()=>{
  const camera={aspect:1,updateProjectionMatrix(){updates.push(this.aspect);}};
  const weapon={aspect:1,updateProjectionMatrix(){updates.push(this.aspect);}};
  const root={style:{setProperty:(k,v)=>{values[k]=v;}}};
- const sync=createGameViewportSync({canvas,renderer,cameras:[camera,weapon],root});
+ const sync=createGameViewportSync({canvas,renderer,cameras:[camera,weapon],root,overlay:{getBoundingClientRect:()=>({...hud})}});
  assert.equal(sync().aimX,329.5);
  assert.deepEqual(calls,[[659,353,false]]);
  assert.equal(canvas.style.width,'');
- assert.equal(values['--aim-x'],'329.5px');
- assert.equal(values['--aim-y'],'176.5px');
+ assert.equal(values['--aim-shift-x'],'-54.5px');
+ assert.equal(values['--aim-shift-y'],'0px');
  assert.equal(camera.aspect,659/353);
  assert.equal(weapon.aspect,camera.aspect);
  assert.equal(sync().width,659);
@@ -40,14 +41,14 @@ test('renderer resizes the backbuffer without overriding responsive CSS',()=>{
  dims.width=768;
  assert.equal(sync().aimX,384);
  assert.deepEqual(calls.at(-1),[768,353,false]);
- assert.equal(values['--aim-x'],'384px');
+ assert.equal(values['--aim-shift-x'],'0px');
  assert.equal(camera.aspect,768/353);
  assert.equal(weapon.aspect,camera.aspect);
  assert.equal(canvas.style.width,'');
- dims.width=390;dims.height=844;
+ dims.width=390;dims.height=844;hud.width=390;hud.height=844;
  assert.equal(sync().aimY,422);
  assert.deepEqual(calls.at(-1),[390,844,false]);
- assert.equal(values['--aim-y'],'422px');
+ assert.equal(values['--aim-shift-y'],'0px');
  assert.equal(calls.length,3);
 });
 
@@ -58,8 +59,8 @@ test('CSS owns canvas layout and centers aiming HUD on the camera axis',()=>{
    const start=css.indexOf(selector+'{');
    assert.ok(start>=0,selector+' rule exists');
    const rule=css.slice(start,css.indexOf('}',start)+1);
-   assert.match(rule,/left:var\(--aim-x,50%\)/,selector+' follows canvas X');
-   assert.match(rule,/top:var\(--aim-y,50%\)/,selector+' follows canvas Y');
+   assert.ok(rule.includes('left:calc(50% + var(--aim-shift-x,0px))'),selector+' follows responsive HUD X');
+   assert.ok(rule.includes('top:calc(50% + var(--aim-shift-y,0px))'),selector+' follows responsive HUD Y');
  }
 });
 
