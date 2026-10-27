@@ -73,6 +73,17 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(diag.namedProps.length>=10,'must load original furnishings, not a blank proxy scene');
   assert.equal(diag.characterModelReady,true,'Cartridge Strike GLB avatars must load');
   assert.ok(diag.authoredVisuals>=10,'all bots/hostages must use the skinned Quaternius characters');
+  assert.equal(diag.weaponModel,'sniper','original Scope 5 mesh must be selected');
+  assert.equal(diag.viewmodelSource,'capstere/cartridge-strike');
+  assert.equal(diag.viewmodelType,'fitted-gloves');
+  // All 10 start positions are authored navigation nodes, widely spaced.
+  const spawnPoints=[...diag.anchors.analysts,...diag.anchors.counterAnalysts];
+  assert.equal(spawnPoints.length,10);
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+  const minSpawnGap=Math.min(...spawnPoints.flatMap((a,i)=>spawnPoints.slice(i+1).map(b=>dist(a,b))));
+  assert.ok(minSpawnGap>3.0,'five-on-five team spawns are still uncomfortably bunched: '+minSpawnGap);
+  const squadRange=Math.max(...diag.anchors.analysts.flatMap(a=>diag.anchors.analysts.map(b=>dist(a,b))));
+  assert.ok(squadRange>8,'Analysts must start more widely distributed around Hissrum V5');
   assert.equal(diag.dwarfCount,8,'eight original fantasy dwarfs must spawn inside Hissrum V5');
   assert.equal(diag.botFlightEnabled,true,'AI vertical navigation must be on by default');
   assert.equal(diag.tacticalAIEnabled,true,'bots should use real-room tactical planning');
@@ -128,12 +139,26 @@ async function launchReadyPage(context,tag,issues){
   await page.screenshot({timeout:90000,path:'hissrum-strike-sniper.png'});
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(100);
+  // Switching to the original P9 must reveal REAL CC0 skinned first-person
+  // hands, not the old procedural block-and-capsule weapon.
+  await page.keyboard.press('Digit2');
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.weaponModel==='p9',null,{timeout:20000});
+  const pistolVisual=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(pistolVisual.viewmodelSource,'capstere/cartridge-strike');
+  assert.equal(pistolVisual.viewmodelType,'skinned-hands');
+  assert.equal(pistolVisual.viewmodelSkinnedHands,true);
+  await page.screenshot({timeout:90000,path:'hissrum-strike-p9-hands.png'});
+  await page.keyboard.press('Digit1');
   await page.keyboard.press('KeyF');
   await page.waitForTimeout(110);
   const origin=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.equal(origin.flying,true,'F enables flight');
   await page.keyboard.down('Space');
-  await page.waitForTimeout(700);
+  // Software WebGL can render only a few frames per wall-clock second with
+  // the full imported hand rig. Wait for actual simulation height change.
+  await page.waitForFunction(target=>
+    window.__hissrumDiagnostics()?.player?.y>target,
+    origin.player.y+.085,{timeout:22000});
   await page.keyboard.up('Space');
   const ascended=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(ascended.player.y>origin.player.y+.07,'Space should ascend without jumping off tape');
@@ -165,6 +190,15 @@ async function launchReadyPage(context,tag,issues){
     'only two tactical flying bots at once on mobile-safe AI');
   console.log('TACTICAL AI GLB LIVE',JSON.stringify(tactics.tacticalBots.slice(0,8)));
   console.log('PASS: Autonomous tactical bot flight and role-based goals visible during real 5v5 simulation');
+  // Play the authored Death01 skeletal clip in the REAL miniature scene. It
+  // must remain visible rather than instantly removing the dead bot's mesh.
+  const dead=await page.evaluate(()=>window.__hissrumVisualTest.previewNpcDeath());
+  assert.ok(dead,'there must be a living bot for the death scene');
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.deathAnimations>=1,null,{timeout:20000});
+  console.log('PASS: Quaternius Death01 plays for fallen bots');
+  assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.previewPlayerDeath()),true);
+  await page.waitForFunction(()=>window.__hissrumDiagnostics()?.playerDeathCamera===true,null,{timeout:20000});
+  console.log("PASS: player's Death01 is visible in a short third-person fall");
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
@@ -181,6 +215,8 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(Math.abs(mobileDiag.player.y)<.3,'mobile player must stand ON the real floor');
   assert.equal(mobileDiag.characterModelReady,true);
   assert.ok(mobileDiag.authoredVisuals>=10);
+  assert.equal(mobileDiag.weaponModel,'sniper');
+  assert.equal(mobileDiag.viewmodelSource,'capstere/cartridge-strike');
   assert.equal(mobileDiag.dwarfCount,8,'mobile game must initialize all dwarfs');
   assert.equal(mobileDiag.botFlightEnabled,true);
   assert.equal(mobileDiag.tacticalAIEnabled,true);

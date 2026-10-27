@@ -4,13 +4,17 @@ import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-ai-v5';
 import {AudioSystem} from './audio.mjs';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
-import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
+import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
+import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
+import {makeWeapon as createStrikeWorldWeapon} from './weapon-kit/model-primitives.mjs';
+import {corpseShouldShow,deathAge,poseAuthoredDeath,resumeAuthoredAfterRespawn,
+  PLAYER_DEATH_CAMERA_SECONDS} from './characters/death-animation.mjs';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065};
-let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
+let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponStage,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
@@ -44,15 +48,11 @@ function setupGraphics(){
   initTracers();
   addEventListener('resize',()=>{
     camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    if(weaponCamera){weaponCamera.aspect=innerWidth/innerHeight;weaponCamera.updateProjectionMatrix();}
     renderer.setSize(innerWidth,innerHeight);
   });
 }
 
-const mat=(color,metalness=.15)=>new THREE.MeshStandardMaterial({color,roughness:.67,metalness});
-const darkMat=mat('#1a2931',.62);
-function part(group,geo,material,x,y,z){
- const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,y,z);group.add(mesh);return mesh;
-}
 /** EXACT authored Quaternius skins and real animation clips from Cartridge Strike.
  *  Geometry, animations and textures are shared; skeleton and mixers are
  *  unique per actor so bots can move independently in the 1:6 room.
@@ -64,6 +64,11 @@ function makeCharacter(team,id){
  root.userData.avatar=avatar;
  root.userData.renderType='cartridge-strike-quaternius';
  root.add(avatar.holder);
+ if(team!=='hostage'){
+   const socket=new THREE.Group();socket.name='cartridge-strike-world-weapon-socket';
+   root.userData.weaponSocket=socket;root.userData.worldGuns=new Map();
+   root.add(socket);
+ }
  scene.add(root);
  return root;
 }
@@ -74,15 +79,58 @@ function clearCharacters(){
  }
  actors.clear();hostages.clear();
 }
+const wristScratch=new THREE.Vector3(),gripScratch=new THREE.Vector3();
+function syncOriginalWorldWeapon(visual,actor){
+ const socket=visual.userData.weaponSocket;
+ if(!socket)return;
+ const weapon=WEAPONS[actor.weapon];
+ if(!actor.alive||!weapon||!['primary','pistol','knife'].includes(weapon.slot)){
+   socket.visible=false;return;
+ }
+ if(visual.userData.worldWeapon!==actor.weapon){
+   for(const item of socket.children)item.visible=false;
+   let gun=visual.userData.worldGuns.get(actor.weapon);
+   if(!gun){
+     gun=createStrikeWorldWeapon(actor.weapon,{viewmodel:false});
+     visual.userData.worldGuns.set(actor.weapon,gun);
+     socket.add(gun);
+   }
+   gun.visible=true;visual.userData.worldWeapon=actor.weapon;
+ }
+ socket.visible=true;
+ // Borrow Cartridge Strike's third-person wrist socket calculation. The
+ // held gun follows the original animated Quaternius right-hand bone.
+ const hand=visual.userData.avatar.bones.get('hand_r');
+ if(!hand)return;
+ visual.updateWorldMatrix(true,true);
+ const wrist=visual.worldToLocal(hand.getWorldPosition(wristScratch));
+ const gun=visual.userData.worldGuns.get(actor.weapon);
+ socket.rotation.set(Math.max(-.65,Math.min(.65,actor.pitch||0)),0,0);
+ gripScratch.copy(gun.userData.grip||gripScratch.set(0,0,0))
+   .multiplyScalar(.85).applyEuler(socket.rotation);
+ socket.position.copy(wrist).sub(gripScratch);
+ socket.position.y-=.012;socket.position.z-=.043;
+}
 function poseCharacter(visual,actor,now){
+ const avatar=visual.userData.avatar;
+ if(!actor.alive){
+   if(corpseShouldShow(actor,now))poseAuthoredDeath(avatar,actor,now);
+   return;
+ }
+ if(avatar.death)resumeAuthoredAfterRespawn(avatar);
  // Keep mobile GPU skinning smooth without evaluating 12 rigs at 60 FPS.
  const period=coarse?1/24:1/45;
  if(visual.userData.nextPoseTime!==undefined&&now<visual.userData.nextPoseTime)return;
  visual.userData.nextPoseTime=now+period;
- animateAuthored(visual.userData.avatar,actor,now);
+ animateAuthored(avatar,actor,now);
+}
+function watchingPlayerDeath(){
+ const p=game?.player;
+ return p&&!p.alive&&deathAge(p,game.state.time)<PLAYER_DEATH_CAMERA_SECONDS;
 }
 function shouldRenderAvatar(actor,viewer){
- if(!viewer||actor===viewer)return false;
+ if(!viewer)return true;
+ if(actor===viewer)return false;
  const dx=actor.x-viewer.x,dz=actor.z-viewer.z,dist=Math.hypot(dx,dz);
  if(dist<3)return true;
  const yaw=viewer.yaw||0;
@@ -93,18 +141,28 @@ function shouldRenderAvatar(actor,viewer){
 }
 function syncCharacters(dt){
  if(!game)return;
- const cameraActor=spectateActor||game.player;
+ const cameraActor=watchingPlayerDeath()?null:(spectateActor||game.player);
  for(const actor of game.actors){
    let visual=actors.get(actor.id);
    if(!visual){visual=makeCharacter(actor.team,actor.id);actors.set(actor.id,visual);}
-   visual.visible=actor.alive&&shouldRenderAvatar(actor,cameraActor);
-   if(!visual.visible)continue;
+   const recentlyDead=corpseShouldShow(actor,game.state.time);
+   visual.visible=(actor.alive||recentlyDead)
+     &&(watchingPlayerDeath()&&actor.isPlayer||shouldRenderAvatar(actor,cameraActor));
+   // Even a body currently outside the camera starts the genuine Death01
+   // action. This avoids delayed animation when the player turns around.
+   if(!visual.visible){
+     if(recentlyDead&&!visual.userData.avatar.death)
+       poseAuthoredDeath(visual.userData.avatar,actor,game.state.time);
+     continue;
+   }
    visual.position.set(actor.x,actor.y,actor.z);
    visual.rotation.y=actor.yaw;
    // Authored crouch and jump clips handle body pose; do not squash the mesh
    // when Game changes its collision capsule height.
    visual.scale.setScalar(1);
    poseCharacter(visual,actor,game.state.time);
+   if(actor.alive)syncOriginalWorldWeapon(visual,actor);
+   else if(visual.userData.weaponSocket)visual.userData.weaponSocket.visible=false;
  }
  for(const hostage of game.hostages){
    let visual=hostages.get(hostage.id);
@@ -146,30 +204,24 @@ function installRoomLighting(){
   console.info('[Hissrum Strike] Interior material and fixture lights',{twoSided});
 }
 function initViewWeapon(){
- weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
- weaponBase=new THREE.Group();weaponRoot.add(weaponBase);
- part(weaponBase,new THREE.BoxGeometry(.18,.13,.63),mat('#263c46',.7),0,0,0);
- part(weaponBase,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
- part(weaponBase,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
- part(weaponBase,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
- part(weaponBase,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
- part(weaponBase,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
- // Scope 5: its own longer rifle silhouette, optics + engraved mount rather
- // than merely renaming the generic SMG. Game combat and ammo stay authoritative.
- sniperRoot=new THREE.Group();weaponRoot.add(sniperRoot);sniperRoot.visible=false;
- const finish=mat('#253537',.8),barrel=mat('#182427',.87),mount=mat('#526c6d',.55),glass=mat('#719b9a',.35);
- part(sniperRoot,new THREE.BoxGeometry(.19,.15,.88),finish,0,0,-.16);
- part(sniperRoot,new THREE.BoxGeometry(.14,.16,.38),finish,.01,-.065,.35);
- part(sniperRoot,new THREE.BoxGeometry(.095,.30,.14),finish,.025,-.20,.13);
- part(sniperRoot,new THREE.CylinderGeometry(.035,.035,.62,12),barrel,0,.015,-.88).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.063,.052,.14,12),mount,0,.016,-1.17).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.BoxGeometry(.10,.10,.25),mount,0,.15,-.37);
- part(sniperRoot,new THREE.CylinderGeometry(.083,.083,.41,14),barrel,0,.24,-.40).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.616).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.18).rotation.x=Math.PI/2;
- muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),
-   new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.78);
- muzzle.visible=false;
+  // Reproduce Cartridge Strike's dedicated 60° first-person renderer. Its
+  // weapon meshes and CC0 gloves keep their original geometry and animations,
+  // while world depth is cleared only for the presentation overlay.
+  weaponScene=new THREE.Scene();
+  weaponScene.add(new THREE.HemisphereLight(0xe2eff7,0x6c665b,1.5));
+  const light=new THREE.DirectionalLight(0xffe7c8,2.05);
+  light.position.set(-1,2,1);weaponScene.add(light);
+  weaponCamera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,5);
+  weaponCamera.rotation.order='YXZ';
+  weaponStage=new THREE.Group();
+  // Original weapons use 60° view geometry. Portrait displays have a much
+  // narrower horizontal FOV: shrink and shift THE CAMERA OVERLAY, not meshes,
+  // so full skinned hands stay legible without clipping the real GLB walls.
+  if(coarse){weaponStage.scale.setScalar(.72);weaponStage.position.set(-.075,-.045,-.065);}
+  weaponScene.add(weaponStage);
+  muzzle=new THREE.Mesh(new THREE.SphereGeometry(.058,9,7),
+    new THREE.MeshBasicMaterial({color:0xffdf99,transparent:true,opacity:.92,depthWrite:false,depthTest:false}));
+  muzzle.visible=false;weaponScene.add(muzzle);
 }
 function initTracers(){
  for(let i=0;i<38;i++){
@@ -262,7 +314,9 @@ function startGame(){
  clearScope();syncSpecialHUD();
  currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
- weaponRoot.visible=true;setHidden('menu',true);setHidden('pause',true);
+ for(const gun of weaponModels.values())gun.visible=false;
+ currentWeapon='';activeViewModel=null;weaponShotAt=-Infinity;
+ setHidden('menu',true);setHidden('pause',true);
  setHidden('match-end',true);setHidden('hud',false);
  setHidden('touch-controls',!coarse);
  notice('DU ÄR MINIATYR · HISSRUM 12',3);
@@ -294,7 +348,7 @@ function mainMenu(){
  game=null;clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
  setHidden('touch-controls',true);setHidden('menu',false);
- weaponRoot.visible=false;
+ if(activeViewModel)activeViewModel.visible=false;
  if(document.pointerLockElement===canvas)document.exitPointerLock();
 }
 const feed=[];
@@ -320,7 +374,7 @@ function updateEvents(){
    if(event.type==='kill')addKill(event);
    if(event.type==='combat-hit'&&event.actorId===game.player.id)hitUntil=performance.now()+170;
    if(event.type==='damage'&&event.actorId===game.player.id)damageUntil=performance.now()+220;
-   if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;}
+   if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;weaponShotAt=game.state.time;}
    if(event.type==='reload'&&event.actorId===game.player.id)notice('LADDAR OM',1.4);
    if(event.type==='planted')notice('BOMBEN PLANTERAD',3.2);
    if(event.type==='defuse')notice('DESARMERING PÅGÅR',2);
@@ -331,12 +385,28 @@ function updateEvents(){
 function cameraFollow(dt){
  const p=game?.player;
  if(!p)return;
- spectateActor=p.alive?p:game.spectator;
+ const deathWatch=watchingPlayerDeath();
+ spectateActor=deathWatch?p:(p.alive?p:game.spectator);
  const a=spectateActor||p;
- if(a.isPlayer){camera.rotation.set(a.pitch,a.yaw,0,'YXZ');}
- else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
- const bob=p.alive&&p.moving>.2&&!p.crouching?Math.sin(game.state.time*12)*Math.min(.032,p.moving*.008):0;
- camera.position.set(a.x,a.y+a.height-.13+bob,a.z);
+ if(deathWatch){
+   // Cartridge Strike's authored third-person death, briefly visible before
+   // switching to a surviving teammate. Keep collision/game state unchanged.
+   const age=Math.max(0,deathAge(p,game.state.time));
+   const zoom=1.25+Math.min(1,age/.85)*.85;
+   const angle=(p.yaw||0)+Math.PI*.62;
+   const target={x:p.x,y:p.y+.70,z:p.z};
+   camera.position.set(
+     target.x+Math.sin(angle)*zoom,
+     target.y+1.10+Math.min(.45,age*.28),
+     target.z+Math.cos(angle)*zoom);
+   camera.lookAt(target.x,target.y,target.z);
+ }else{
+   if(a.isPlayer)camera.rotation.set(a.pitch,a.yaw,0,'YXZ');
+   else camera.rotation.set(a.pitch||0,a.yaw||0,0,'YXZ');
+   const bob=p.alive&&p.moving>.2&&!p.crouching
+     ?Math.sin(game.state.time*12)*Math.min(.032,p.moving*.008):0;
+   camera.position.set(a.x,a.y+a.height-.13+bob,a.z);
+ }
  const scopeActive=p.alive&&p.weapon==='sniper'&&aiming;
  const desiredFov=scopeActive?19:(coarse?84:76);
  if(Math.abs(camera.fov-desiredFov)>.02){
@@ -345,25 +415,28 @@ function cameraFollow(dt){
  }
  setHidden('scope-overlay',!scopeActive);
  document.body.classList.toggle('sniper-scoped',scopeActive);
- weaponBase.visible=p.weapon!=='sniper';
- sniperRoot.visible=p.weapon==='sniper';
- weaponRoot.visible=p.alive&&!scopeActive;
  gunKick=Math.max(0,gunKick-dt*.45);
- weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
- weaponRoot.position.set(coarse?.29:.30,coarse?-.41:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.86:-.52+gunKick);
- weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
- const w=WEAPONS[p.weapon];
- const s=coarse?.64:1;
- if(p.weapon==='sniper'){
-   // Long-range rifle rests low/right, never masks the target or the CREFORM
-   // scenery. Scope mode temporarily hides the whole gun.
-   weaponRoot.position.set(coarse?.38:.49,coarse?-.46:-.40,coarse?-1.00:-.92);
-   weaponRoot.rotation.z=-.035;
-   weaponRoot.scale.setScalar(coarse?.44:.58);
- }else if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
- else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
- else weaponRoot.scale.set(s,s,s);
- muzzle.visible=performance.now()<shotUntil;
+ if(p.alive && (p.weapon!==currentWeapon||!activeViewModel)){
+   if(activeViewModel)activeViewModel.visible=false;
+   let model=weaponModels.get(p.weapon);
+   if(!model){
+     model=createStrikeViewWeapon(p.weapon||'p9');
+     weaponModels.set(p.weapon,model);weaponStage.add(model);
+   }
+   currentWeapon=p.weapon;activeViewModel=model;
+   weaponSwitchAt=game.state.time;
+ }
+ if(activeViewModel){
+   activeViewModel.visible=p.alive&&!scopeActive;
+   if(activeViewModel.visible){
+     const pose=animateStrikeViewWeapon(activeViewModel,p,game.state.time,dt,{
+       shotAt:weaponShotAt,switchAt:weaponSwitchAt,recoil:gunKick,
+       reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches
+     });
+     muzzle.position.copy(pose.muzzle);
+   }
+ }
+ muzzle.visible=!!activeViewModel?.visible&&performance.now()<shotUntil;
 }
 function activeInput(){
  const p=game?.player;
@@ -523,6 +596,12 @@ function frame(now){
  }
  for(const t of tracers)if(t.until<now)t.line.visible=false;
  renderer.render(scene,camera);
+ if(activeViewModel?.visible){
+   renderer.autoClear=false;
+   renderer.clearDepth();
+   renderer.render(weaponScene,weaponCamera);
+   renderer.autoClear=true;
+ }
 }
 
 window.addEventListener('keydown',e=>{
@@ -647,6 +726,16 @@ try{
      stats:world.statistics,
      characterModelReady:charactersReady(),
      authoredVisuals:[...actors.values(),...hostages.values()].filter(v=>v.userData.renderType==='cartridge-strike-quaternius').length,
+     deathAnimations:[...actors.values()].filter(v=>!!v.userData.avatar?.death).length,
+     playerDeathCamera:!!watchingPlayerDeath(),
+     weaponModel:activeViewModel?.userData?.id??null,
+     viewmodelSource:activeViewModel?.userData?.hissrumSource??null,
+     viewmodelType:activeViewModel?.userData?.originalStrikeKit?'skinned-hands':'fitted-gloves',
+     viewmodelSkinnedHands:activeViewModel?.getObjectByName('kit-skinned-glove')?.isSkinnedMesh===true,
+     weaponStageScale:weaponStage?.scale.x??null,
+     botWorldWeapons:[...actors.values()].filter(v=>v.userData.worldGuns?.size>0).length,
+     spawnSpread:game?.actors?.length?
+       Math.min(...game.actors.flatMap((a,i)=>game.actors.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.z-b.z)))):null,
      flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
      fov:camera.fov,tapeCollidersExcluded:world.statistics.nonSolidTapeMeshes,
      dwarfCount:game?.state.wanderers?.length||0,
@@ -668,8 +757,8 @@ try{
      decodedSounds:audioSystem?.buffers.size||0,
      audioErrors:audioSystem?.errors.slice(0,3)||[]
    });
-   // Read-only visual QA plus a controlled hit on a synthetic event, available
-   // ONLY when ?test is explicitly present. Never mutates a player's HP.
+   // QA hooks are available ONLY when ?test is explicitly requested.
+   // Death previews mutate test fixtures only, never the production match.
    window.__hissrumVisualTest={
      paintDamage:()=>{
        if(!game||!bloodEffects)return false;
@@ -689,6 +778,22 @@ try{
          x:game.player.x,y:game.player.y+1.5,z:game.player.z}],
          {...game.player,y:game.player.y+1.5},game.state.time);
        return audioSystem.stats.played>0;
+     },
+     previewNpcDeath:()=>{
+       // Test-only simulation. The normal game still controls real health,
+       // scoring, respawn and deaths through its own damage system.
+       const a=game?.actors.find(a=>a.alive&&a.bot&&!a.isPlayer);
+       if(!a)return null;
+       Object.assign(a,{alive:false,hp:0,deathAt:game.state.time,
+         respawnAt:game.state.time+5});
+       return a.id;
+     },
+     previewPlayerDeath:()=>{
+       const a=game?.player;
+       if(!a?.alive)return false;
+       Object.assign(a,{alive:false,hp:0,deathAt:game.state.time,
+         respawnAt:game.state.time+5});
+       return true;
      }
    };
  }

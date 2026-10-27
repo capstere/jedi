@@ -123,3 +123,15 @@ Hissrum Strike använder nu Yuka för grundläggande navigering och perception, 
 - **Prestanda:** planeringen sker med begränsat antal verkliga golvnoder, max sju navigeringskontroller per beslut och ett kort taktiskt åtagande som förhindrar omplanering för varje bildruta.
 
 Taktisk AI är aktiv som standard i Hissrum Strike, men originalet Cartridge Strike och Hissrum 12 Layout Studio påverkas inte. Testerna i `tests/tactical-ai.test.mjs` kontrollerar skydd, flankering, aktuell lagobservation, fördelning mellan lagkamrater, begränsade sökningar och taktisk flygning. Fulla browser-smoke-testet körs även i mobilvy.
+
+## Originalvapen, händer och dödsanimationer
+
+Hissrum Strike använder nu **samma förstapersonsmodeller för vapen och händer** som Cartridge Strike, hämtade från originalrepositoryts `main` på commit `a94b5dd1f87c7a080a97f020052c882271ab14ba`.
+
+- `src/weapon-kit/` innehåller de originalskrivna vapengeometrierna (`model-primitives.mjs`), de riggade Quaternius CC0-händerna för P9, P12 och CR4 (`strike-kit-models/hands.mjs`, `authored-hand-data.mjs`), handmaterial, animationer för omladdning och den ursprungliga förstapersonsrörelsen.
+- Övriga vapen såsom Vector C, AR-47, hagelgevär, Scope 5 och kniv använder originalens egna detaljerade 3D-modeller med monterade handskar, inte tidigare improviserade lådformer.
+- `src/weapon-kit/weapon-view.mjs` är en tunn adapter som använder **befintlig Game-klass för ammunition, skada och träffar**. Den ursprungliga 60° vapenkameran renderas med separat djupbuffert ovanpå hissrummets scen, så väggar inte klipper händerna.
+- `src/characters/death-animation.mjs` spelar upp den överförda karaktärens riktiga `Death01`-klipp. Döda botar ligger kvar en stund i stället för att bara försvinna, och efter egen död syns spelarens fall ur ett kort tredjepersonsperspektiv innan kameraläget byts till en levande lagkamrat.
+- `src/navigation.mjs` fördelar Analyst- och Counter-spawnpunkterna med bred separation i samma verkligt sammanhängande GLB-golv. Varje teams fem startplatser sprids ut, inte klustras kring ett enda hörn. Ingen ny osynlig vägg tillkommer.
+
+Tillhörande Quaternius CC0-licens och andra originallicenser är bevarade under `licenses/`. De importerade vapenkällfilerna är spelvisualiseringar och inte teknisk vapendokumentation. Automatiska tester verifierar importerade modeller, faktisk fördelning över golvet och dödsanimationsuppspelning i Chromium samt i mobilstorlek.

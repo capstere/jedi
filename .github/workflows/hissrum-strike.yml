@@ -56,5 +56,6 @@ jobs:
             hissrum-strike-browser.png
             hissrum-strike-mobile.png
             hissrum-strike-sniper.png
+            hissrum-strike-p9-hands.png
             hissrum-strike-blood-dwarfs.png
           if-no-files-found: ignore
