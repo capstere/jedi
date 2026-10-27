@@ -186,10 +186,21 @@ async function launchReadyPage(context,tag,issues){
   const tactics=await page.evaluate(()=>window.__hissrumDiagnostics());
   assert.equal(tactics.tacticalAIEnabled,true);
   assert.ok(tactics.tacticalBots.some(b=>b.aiState),'bots should choose mission or combat AI states');
-  assert.ok(tactics.tacticalBots.filter(b=>b.flying).length<=2,
-    'only two tactical flying bots at once on mobile-safe AI');
+  assert.ok(tactics.tacticalBots.filter(b=>b.flying).length<=4,
+    'airborne bots stay within the four-flyer cap');
   console.log('TACTICAL AI GLB LIVE',JSON.stringify(tactics.tacticalBots.slice(0,8)));
   console.log('PASS: Autonomous tactical bot flight and role-based goals visible during real 5v5 simulation');
+  await page.keyboard.press('KeyB');
+  await page.waitForSelector('#shop:not([hidden])',{timeout:5000});
+  const credits=(await page.evaluate(()=>window.__hissrumDiagnostics())).money;
+  await page.locator('[data-buy="shotgun"]').click();
+  let purchased=await page.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(purchased.money,credits-1800);
+  assert.equal(purchased.equippedWeapon,'shotgun');
+  await page.locator('#shop-close').click();
+  await page.waitForFunction(()=>!window.__hissrumDiagnostics().shopOpen);
+  console.log('PASS: Desktop B opens real paid field arsenal during round');
+
   // Play the authored Death01 skeletal clip in the REAL miniature scene. It
   // must remain visible rather than instantly removing the dead bot's mesh.
   const dead=await page.evaluate(()=>window.__hissrumVisualTest.previewNpcDeath());
@@ -214,6 +225,14 @@ async function launchReadyPage(context,tag,issues){
   const mobileDiag=await mobile.evaluate(()=>window.__hissrumDiagnostics());
   assert.ok(Math.abs(mobileDiag.player.y)<.3,'mobile player must stand ON the real floor');
   assert.equal(mobileDiag.characterModelReady,true);
+  assert.equal(mobileDiag.autoFireEnabled,true,'mobile automatic fire must be default');
+  assert.equal(await mobile.locator('[data-touch="fire"]').isVisible(),false,'no default fire button');
+  await mobile.locator('#pause-button').tap();
+  await mobile.locator('#auto-fire-pause').selectOption('manual');
+  await mobile.locator('#resume').tap();
+  assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).autoFireEnabled,false);
+  assert.equal(await mobile.locator('[data-touch="fire"]').isVisible(),true,'manual mode reveals fire button');
+
   assert.ok(mobileDiag.authoredVisuals>=10);
   assert.equal(mobileDiag.weaponModel,'sniper');
   assert.equal(mobileDiag.viewmodelSource,'capstere/cartridge-strike');
@@ -273,6 +292,35 @@ async function launchReadyPage(context,tag,issues){
   await mobile.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await mobile.locator('#resume').tap();
   await mobile.waitForFunction(()=>document.querySelector('#pause').hidden,null,{timeout:5000});
+
+  let aim=await mobile.evaluate(()=>window.__hissrumVisualTest.prepareAutoFire('sniper'));
+  assert.ok(aim);
+  await mobile.waitForTimeout(500);
+  assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).magazine,5);
+  await mobile.locator('#pause-button').tap();
+  await mobile.locator('#auto-fire-pause').selectOption('auto');
+  await mobile.locator('#resume').tap();
+  aim=await mobile.evaluate(()=>window.__hissrumVisualTest.prepareAutoFire('sniper'));
+  assert.equal(await mobile.locator('[data-touch="fire"]').isVisible(),false);
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().magazine<5,null,{timeout:45000});
+  const fired=await mobile.evaluate(()=>window.__hissrumDiagnostics());
+  assert.ok(fired.playerShotAt-aim.since>=.32-1/60,'sniper must complete dwell before first auto shot');
+  assert.ok(fired.recoil?.serial>=1,'auto shot must drive real recoil');
+  assert.equal(fired.effectiveAimPitch,fired.rawAimPitch+fired.recoil.pitch);
+  console.log('PASS: Actual visible-enemy mobile sniper auto-fire, dwell and shared camera/ballistic recoil');
+  await mobile.locator('#shop-button').tap();
+  const mobileCredits=(await mobile.evaluate(()=>window.__hissrumDiagnostics())).money;
+  await mobile.locator('[data-buy="smg"]').tap();
+  const mobilePurchase=await mobile.evaluate(()=>window.__hissrumDiagnostics());
+  assert.equal(mobilePurchase.money,mobileCredits-1250);
+  assert.equal(mobilePurchase.equippedWeapon,'smg');
+  await mobile.locator('#shop-close').tap();
+  await mobile.locator('#grenade-toggle').tap();
+  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().trajectoryPoints>5,null,{timeout:30000});
+  assert.equal(await mobile.locator('[data-touch="fire"]').isVisible(),true,'grenades require manual throw');
+  assert.equal(await mobile.locator('[data-touch="fire"]').textContent(),'KASTA');
+  assert.equal((await mobile.evaluate(()=>window.__hissrumDiagnostics())).grenadeSpeed,17);
+  console.log('PASS: Mobile paid arsenal, deliberate grenade control and real-GLB ballistic preview');
   assert.deepEqual(issues,[],'Unexpected browser errors/network failures');
   console.log('PASS: Real Hissrum V5 GLB, CC0 sound decoding, blood splashes, eight dwarfs, autonomous flying bots, iPhone volume and flight controls, pause/resume');
  }finally{

@@ -1,8 +1,11 @@
 import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
 import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
 import { BotController } from './bots.mjs?v=hissrum-ai-v5';
-import {updateBotFlight} from './bot-flight.mjs';
-import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=hissrum-features-v3';
+import {updateBotFlight} from './bot-flight.mjs?v=arsenal-v7';
+import {rayBody as rayActor,automaticTrigger,resetAutoAim} from './aim-controls.mjs';
+import {freshRecoil,recoverRecoil,kickRecoil,applyAimRecoil} from './recoil.mjs';
+import {grenadeLaunch,advanceGrenade} from './grenade-ballistics.mjs';
+import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=arsenal-v7';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -28,21 +31,6 @@ export function resolveRound(state, candidates = []) {
   if (!planted && state.time + EPS >= state.deadline) list.push({ reason: 'timeout', winner: 'analysts', at: state.deadline });
   return list.filter(e => e.reason !== 'defuse' || e.at < state.bomb.deadline - EPS)
     .sort((a, b) => Math.abs(a.at - b.at) < EPS ? PRIORITY[a.reason] - PRIORITY[b.reason] : a.at - b.at)[0] ?? null;
-}
-
-function rayActor(origin, dir, actor, limit) {
-  const min = { x: actor.x - actor.radius, y: actor.y + .04, z: actor.z - actor.radius };
-  const max = { x: actor.x + actor.radius, y: actor.y + actor.height, z: actor.z + actor.radius };
-  let near = 0, far = limit;
-  for (const axis of ['x', 'y', 'z']) {
-    if (Math.abs(dir[axis]) < EPS) { if (origin[axis] < min[axis] || origin[axis] > max[axis]) return null; }
-    else {
-      let a = (min[axis] - origin[axis]) / dir[axis], b = (max[axis] - origin[axis]) / dir[axis];
-      if (a > b) [a, b] = [b, a]; near = Math.max(near, a); far = Math.min(far, b);
-      if (near > far) return null;
-    }
-  }
-  return near <= limit ? near : null;
 }
 
 export class Game {
@@ -90,6 +78,7 @@ export class Game {
       const spawn = this.world.anchors[actor.team][actor.index];
       Object.assign(actor, { ...point(spawn), yaw: spawn.yaw ?? 0, pitch: 0, hp: this.config.health, alive: true,
         height: this.config.standingHeight, vy: 0, onGround: true, crouching: false, flying: false, reloadUntil: 0,
+        aimRecoil:freshRecoil(),rawAimYaw:spawn.yaw??0,rawAimPitch:0,autoAim:null,autoAimProgress:0,airPatrol:null,
         nextShot: s.time, flashUntil: 0, flash: 0, flashStart: 0, action: null, moving: 0, distanceWalked: 0, recoil: 0,
         lastStep: s.time, fireHeld: false, interactHeld: false, jumpHeld: false, lastWeapon: 'knife', hurtTime: -Infinity, hurtDirection: null, deathAt: null, deathCause: null,
         weapon: actor.inventory.primary?.id ?? actor.inventory.pistol?.id ?? 'knife',
@@ -111,7 +100,7 @@ export class Game {
   }
   weaponItem(id) { const w = WEAPONS[id]; return { id, ammo: w.magazine, reserve: w.reserve }; }
   item(actor = this.player) { const w = WEAPONS[actor.weapon]; return actor.inventory[w?.slot] ?? null; }
-  pause(value = true) { this.state.paused = Boolean(value); this.accumulator = 0; for (const a of this.actors) { a.fireHeld = false; a.interactHeld = false; a.jumpHeld = false; a.action = null; } }
+  pause(value = true) { this.state.paused = Boolean(value); this.accumulator = 0; for (const a of this.actors) { a.fireHeld = false; a.interactHeld = false; a.jumpHeld = false; a.action = null; resetAutoAim(a); } }
   update(dt, input = {}) {
     if (this.state.paused || ['menu', 'match'].includes(this.phase)) return;
     this.accumulator += Math.min(Math.max(0, dt), this.config.maxCatchUp);
@@ -134,6 +123,7 @@ export class Game {
     for (const actor of this.actors) {
       if (!actor.alive) continue;
       actor.recoil *= Math.exp(-8 * dt);
+      if(actor.isPlayer&&this.config.progressiveRecoil)recoverRecoil(actor.aimRecoil??=freshRecoil(),dt,s.time);
       actor.flash = actor.flashUntil > s.time ? actor.flashStrength * (actor.flashUntil - s.time) / (actor.flashUntil - actor.flashStart) : 0;
       if (actor.reloadUntil && s.time + EPS >= actor.reloadUntil) {
         const item = this.item(actor), w = WEAPONS[actor.weapon];
@@ -145,8 +135,14 @@ export class Game {
       // Yuka bot controller for aiming, pathfinding and objective priorities.
       if(actor.bot&&this.config.botFlight)updateBotFlight(this,actor,controls,dt);
       this.moveActor(actor, controls, dt);
-      if (controls.fire) this.fire(actor, !actor.fireHeld);
-      actor.fireHeld = !!controls.fire;
+      if(actor.requireFireRelease&&!controls.fire)actor.requireFireRelease=false;
+      const auto=actor.isPlayer&&automaticTrigger(this,actor,WEAPONS[actor.weapon],controls.autoFire===true&&!actor.requireFireRelease);
+      const trigger=!!controls.fire&&!actor.requireFireRelease||!!auto;
+      if(trigger){
+        const shot=this.fire(actor,auto||!actor.fireHeld);
+        if(shot&&auto&&actor.weapon==='sniper')resetAutoAim(actor);
+      }
+      actor.fireHeld=trigger;
       this.interact(actor, controls);
       actor.interactHeld = !!controls.interact;
     }
@@ -162,8 +158,11 @@ export class Game {
     if (result) this.finishRound(result);
   }
   moveActor(actor, input, dt) {
-    if (Number.isFinite(input.yaw)) actor.yaw = input.yaw;
-    if (Number.isFinite(input.pitch)) actor.pitch = clamp(input.pitch, -1.49, 1.49);
+    if(actor.isPlayer&&this.config.progressiveRecoil)applyAimRecoil(actor,input);
+    else{
+      if (Number.isFinite(input.yaw)) actor.yaw = input.yaw;
+      if (Number.isFinite(input.pitch)) actor.pitch = clamp(input.pitch, -1.49, 1.49);
+    }
     // Humans and AI can fly when explicitly enabled. The same solid-GLB
     // capsule movement applies to both; bots keep their Yuka floor route.
     const flying = !!actor.flying&&(!!actor.isPlayer||!!actor.bot);
@@ -175,7 +174,7 @@ export class Game {
     const magnitude = Math.hypot(forward, strafe);
     if (magnitude > 1) { forward /= magnitude; strafe /= magnitude; }
     const mode = actor.crouching ? 'crouch' : input.sneak ? 'sneak' : 'run';
-    const speed = flying ? (this.config.flySpeed ?? 5.8) * (input.sneak ? .55 : 1)
+    const speed = flying ? (actor.bot?(this.config.botFlySpeed??this.config.flySpeed??5.8):(this.config.flySpeed??5.8)) * (input.sneak ? .55 : 1)
       : actor.crouching ? this.config.crouchSpeed : input.sneak ? this.config.sneakSpeed
         : actor.bot ? this.config.botSpeed : this.config.runSpeed;
     let dx = (-Math.sin(actor.yaw) * forward + Math.cos(actor.yaw) * strafe) * speed * dt;
@@ -270,18 +269,22 @@ export class Game {
     const reject = reason => ({ ok: false, reason });
     const w = WEAPONS[id];
     if (!w || !w.cost) return reject('Utrustningen kan inte köpas.');
-    if (!actor?.alive || (this.phase !== 'buy' && !(isEndless(this)&&this.phase==='active'))) return reject('Köp är endast öppet under köptiden.');
-    if (!isEndless(this)&&!this.inBuyZone(actor)) return reject('Gå till lagets köpzon.');
-    if (w.team && w.team !== actor.team) return reject('Vapnet tillhör det andra laget.');
-    if (!isEndless(this)&&actor.money < w.cost) return reject('För lite krediter.');
+    const liveShop=!!this.config.liveShop&&!!actor?.isPlayer;
+    const phaseOK=this.phase==='buy'||this.phase==='active'&&(isEndless(this)||liveShop);
+    if(!actor?.alive||!phaseOK)return reject('Du måste vara vid liv under en pågående runda.');
+    if(!liveShop&&!isEndless(this)&&!this.inBuyZone(actor))return reject('Gå till lagets köpzon.');
+    if(w.team&&w.team!==actor.team&&!(liveShop&&this.config.openArsenal))return reject('Vapnet tillhör det andra laget.');
+    const paid=liveShop||!isEndless(this);
+    if(paid&&(!Number.isFinite(actor.money)||actor.money<w.cost))return reject('För lite krediter.');
     if (w.slot === 'grenade' && actor.inventory[id] >= w.limit) return reject('Granatfacket är fullt.');
     if (w.slot === 'armor' && actor.armor >= 100) return reject('Rustningen är redan full.');
     if (w.slot === 'primary' && actor.inventory.primary?.id === id) return reject('Du har redan detta vapen.');
-    if(!isEndless(this))actor.money -= w.cost;
+    if(paid)actor.money-=w.cost;
     if (w.slot === 'grenade') actor.inventory[id]++;
     else if (w.slot === 'armor') actor.armor = 100;
     else { if (actor.inventory.primary) this.dropItem(actor, actor.inventory.primary); actor.inventory.primary = this.weaponItem(id); actor.loadout=id; this.select(id, actor); }
-    this.emit('buy', actor, { item: id }); return { ok: true };
+    resetAutoAim(actor);
+    this.emit('buy', actor, { item: id, cost:paid?w.cost:0 }); return { ok: true };
   }
   select(slot, actor = this.player) {
     if (!actor?.alive) return false;
@@ -300,6 +303,7 @@ export class Game {
     if (w.slot === 'grenade' && !inventory[id]) return false;
     if (['primary', 'pistol', 'knife'].includes(w.slot) && inventory[w.slot]?.id !== id) return false;
     if (actor.weapon === id) return true;
+    resetAutoAim(actor);
     actor.lastWeapon = actor.weapon; actor.weapon = id; actor.reloadUntil = 0; actor.nextShot = Math.max(actor.nextShot, this.state.time + .22);
     this.emit('switch', actor, { weapon: id }); return true;
   }
@@ -307,6 +311,7 @@ export class Game {
     if (!actor?.alive || actor.reloadUntil || !['buy', 'active'].includes(this.phase)) return false;
     const item = this.item(actor), w = WEAPONS[actor.weapon];
     if (!item || !w.reload || item.ammo >= w.magazine || !item.reserve) return false;
+    resetAutoAim(actor);
     actor.reloadUntil = this.state.time + w.reload; this.emit('reload', actor, { weapon: actor.weapon, duration: w.reload }); return true;
   }
   dropItem(actor, item) { this.state.drops.push({ ...point(actor), id: `drop-${++this.eventSerial}`, type: 'weapon', createdAt:this.state.time, item: { ...item } }); }
@@ -329,13 +334,13 @@ export class Game {
     const item = this.item(actor);
     if (w.slot !== 'knife' && (!item || item.ammo <= 0)) { this.emit('empty', actor); return false; }
     if (w.slot !== 'knife') item.ammo--;
-    const origin = eye(actor), spread = (actor.moving > .3 ? w.movingSpread : w.spread) + actor.recoil * .18 + actor.flash * .12;
+    const origin = eye(actor), spread = (actor.moving > .3 ? w.movingSpread : w.spread) + actor.recoil * .18 + actor.flash * .12 + (actor.isPlayer&&this.config.progressiveRecoil?(actor.aimRecoil?.heat||0)*.0012:0);
     actor.recoil += w.recoil;
     this.emit('shot', actor, { weapon: actor.weapon, yaw: actor.yaw, pitch: actor.pitch, targetId: actor.bot?.target?.entity?.id,
       detectedAt: actor.bot?.target?.detectedAt, reactionAt: actor.bot?.target?.reactionAt });
     actor.spawnProtectedUntil=0;
     if (actor.bot) actor.bot.onShot();
-    if(w.projectile){launchRocket(this,actor,direction(actor.yaw,actor.pitch));return true;}
+    if(w.projectile){launchRocket(this,actor,direction(actor.yaw,actor.pitch));this.applyShotRecoil(actor);return true;}
     for (let i = 0; i < w.pellets; i++) {
       const dir = direction(actor.yaw + (this.random() - .5) * spread, actor.pitch + (this.random() - .5) * spread);
       const wall = this.world.raycast(origin, dir, w.range, { vision: false });
@@ -353,7 +358,14 @@ export class Game {
       } else if (wall) this.emit('impact', null, { ...hitPoint, sourceId: actor.id, surface: wall.material ?? 'wall', surfaceId: wall.id, normal: wall.normal, direction: dir });
       this.emit('tracer', actor, { from: origin, to: hitPoint, weapon: actor.weapon });
     }
+    this.applyShotRecoil(actor);
     return true;
+  }
+  applyShotRecoil(actor){
+    if(!actor.isPlayer||!this.config.progressiveRecoil)return;
+    applyAimRecoil(actor,{});
+    kickRecoil(actor.aimRecoil,actor.weapon,this.state.time);
+    applyAimRecoil(actor,{}); // camera and next shot use the same offset
   }
   damage(target, amount, source, kind = 'shot', context = {}) {
     if (this.phase !== 'active' || !target?.alive || !Number.isFinite(amount) || amount <= 0 || (source && source.team && source.team === target.team && !this.config.friendlyFire && !(source===target&&kind==='bazooka'))) return false;
@@ -372,6 +384,7 @@ export class Game {
       point: { ...hitPoint }, direction: { ...incoming }, sourcePosition: { ...sourcePosition }, ...hitPoint };
     this.emit('damage', target, detail); this.emit('hit', target, detail);
     if (target.hp > 0) return true;
+    resetAutoAim(target);target.aimRecoil=freshRecoil();
     target.alive = false; target.deaths++; target.action = null; target.reloadUntil = 0; target.deathAt = this.state.time;
     target.deathCause = { sourceId: source?.id, sourceName: source?.name, weapon: kind, point: { ...hitPoint }, direction: { ...incoming } };
     if (source && source!==target && target.team && source.team!==target.team) { source.kills++; source.money = Math.min(this.config.maxMoney, source.money + this.config.killMoney); }
@@ -398,28 +411,19 @@ export class Game {
   throwGrenade(actor, type) {
     if (this.phase !== 'active' || !actor.alive || !actor.inventory[type]) return false;
     actor.inventory[type]--;
-    const origin = eye(actor), dir = direction(actor.yaw, actor.pitch + .15);
-    this.state.grenades.push({ ...origin, id: `grenade-${++this.eventSerial}`, type, ownerId: actor.id,
-      vx: dir.x * this.config.grenadeSpeed, vy: dir.y * this.config.grenadeSpeed + 1.8, vz: dir.z * this.config.grenadeSpeed,
-      radius: this.config.grenadeRadius, deadline: this.state.time + this.config.grenadeFuse, lastBounce: -Infinity });
+    if(actor.isPlayer)actor.requireFireRelease=true;
+    this.state.grenades.push({ ...grenadeLaunch(actor,this.config),
+      id:`grenade-${++this.eventSerial}`,type,ownerId:actor.id,
+      deadline:this.state.time+this.config.grenadeFuse,lastBounce:-Infinity });
     this.emit('throw', actor, { grenade: type }); this.select(actor.inventory.primary?.id ?? actor.inventory.pistol?.id ?? 'knife', actor); return true;
   }
   updateGrenades(dt) {
     const remaining = [];
     for (const grenade of this.state.grenades) {
-      grenade.vy -= this.config.gravity * dt;
-      const displacement = { x: grenade.vx * dt, y: grenade.vy * dt, z: grenade.vz * dt };
-      const length = Math.hypot(displacement.x, displacement.y, displacement.z);
-      const dir = length ? { x: displacement.x / length, y: displacement.y / length, z: displacement.z / length } : { x: 0, y: -1, z: 0 };
-      const hit = this.world.raycast(grenade, dir, length + grenade.radius, { vision: false });
-      if (hit) {
-        const travel = Math.max(0, hit.distance - grenade.radius);
-        grenade.x += dir.x * travel; grenade.y += dir.y * travel; grenade.z += dir.z * travel;
-        const n = hit.normal ?? { x: 0, y: 1, z: 0 }, dot = grenade.vx * n.x + grenade.vy * n.y + grenade.vz * n.z;
-        grenade.vx = (grenade.vx - 1.6 * dot * n.x) * .72; grenade.vy = (grenade.vy - 1.6 * dot * n.y) * .72; grenade.vz = (grenade.vz - 1.6 * dot * n.z) * .72;
-        if (this.state.time - grenade.lastBounce > .12) { this.emit('bounce', null, { ...point(grenade), grenade: grenade.type }); grenade.lastBounce = this.state.time; }
-      } else { grenade.x += displacement.x; grenade.y += displacement.y; grenade.z += displacement.z; }
-      if (grenade.y < grenade.radius) { grenade.y = grenade.radius; grenade.vy = Math.abs(grenade.vy) * .35; grenade.vx *= .82; grenade.vz *= .82; }
+      const bounced=advanceGrenade(grenade,dt,this.world,this.config.gravity);
+      if(bounced&&this.state.time-grenade.lastBounce>.12){
+        this.emit('bounce',null,{...point(grenade),grenade:grenade.type});grenade.lastBounce=this.state.time;
+      }
       if (this.state.time + EPS >= grenade.deadline) this.detonateGrenade(grenade); else remaining.push(grenade);
     }
     this.state.grenades = remaining;

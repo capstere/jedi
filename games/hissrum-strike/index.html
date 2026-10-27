@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=hissrum-flybots-effects-v4">
+  <link rel="stylesheet" href="./style.css?v=arsenal-v7">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -26,7 +26,7 @@
     <div class="header-emblem">12<span>V5</span></div>
     <h1 id="game-title">HISSRUM<span>STRIKE</span></h1>
     <p class="subtitle">Du är cirka 28 centimeter lång.<br>Hela slagfältet är Hissrum 12.</p>
-    <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span><span>NYA 3D-VAPEN</span></div>
+    <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span><span>AUTOELD · FÄLTARSENAL</span></div>
     <div class="menu-options">
       <label>Spelläge
         <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
@@ -43,6 +43,12 @@
       <label>Blod
         <select id="blood-mode"><option value="standard" selected>På</option><option value="reduced">Mindre</option><option value="off">Av</option></select>
       </label>
+      <label class="mobile-setting">Mobil: avfyrning
+        <select id="auto-fire-mode"><option value="auto">Automatisk — sikta på fiende</option><option value="manual">Manuell — skjutknapp</option></select>
+      </label>
+      <label>Granatbana
+        <select id="trajectory-mode"><option value="on">Visa kastbana</option><option value="off">Dölj kastbana</option></select>
+      </label>
       <label>Fantasidvärgar
         <select id="dwarf-mode"><option value="on" selected>8 dvärgar</option><option value="off">Av</option></select>
       </label>
@@ -57,8 +63,8 @@
       <a href="./README.md">Om spelet</a>
     </div>
     <details class="help"><summary>Styrning</summary>
-      <p><strong>Dator:</strong> WASD rörelse · mus sikta/skjut · R ladda · 1–4 vapen · Shift smyg · F flyg/landa · Space upp / Ctrl ned i flygläge · Z eller höger musknapp sniper-sikte · E interagera · Esc pausa.</p>
-      <p><strong>Mobil:</strong> vänster joystick för rörelse, dra till höger för att sikta. FLYG slår på/av svävning; UPP/HOPPA och NER styr höjden. SIKTE zoomar med Sniper Scope 5.</p>
+      <p><strong>Dator:</strong> WASD rörelse · mus sikta/skjut · R ladda · 1–4 vapen · Shift smyg · F flyg/landa · Space upp / Ctrl ned i flygläge · Z eller höger musknapp sniper-sikte · B köp vapen när som helst · G granat · E interagera · Esc pausa.</p>
+      <p><strong>Mobil:</strong> vänster joystick för rörelse, dra till höger för att sikta. FLYG slår på/av svävning; UPP/HOPPA och NER styr höjden. Automatisk eld är standard: sikta på en synlig fiende. Snipern låser på efter 0,32 s. SIKTE zoomar, KÖP öppnar arsenalen och GRANAT väljer granat. Manuell eld finns i pausmenyn.</p>
     </details>
   </div>
 </section>
@@ -74,6 +80,8 @@
   <div class="mission" id="mission">TA KONTROLL ÖVER HISSRUMMET</div>
   <div id="flight-status" hidden>FLYGLÄGE · SPACE UPP / CTRL NED</div>
   <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+  <div id="auto-status" aria-live="off" hidden>AUTO</div>
+  <div id="grenade-status" hidden>G / GRANAT · välj · KASTA · B / KÖP fyller på</div>
   <div id="hit" aria-hidden="true">×</div>
   <div id="damage" aria-hidden="true"></div>
   <div id="notify" role="status"></div>
@@ -81,6 +89,7 @@
   <footer class="hud-bottom">
     <div class="hp-block"><span>HÄLSA</span><strong id="health">100</strong><small id="armor">RUSTNING 0</small></div>
     <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small></div>
+    <button class="sound-button" id="shop-button" aria-label="Öppna vapenbutik">KÖP</button>
     <button class="sound-button" id="sound-button" aria-label="Stäng av ljud" aria-pressed="true">LJUD</button>
     <button class="pause-button" id="pause-button" aria-label="Pausa">Ⅱ</button>
   </footer>
@@ -90,6 +99,12 @@
 <section id="pause" class="screen screen-pause" hidden aria-labelledby="pause-title">
   <div class="pause-card"><p class="eyebrow">HISSRUM STRIKE</p><h2 id="pause-title">PAUSAD</h2>
     <p>Du är cirka 28 centimeter lång. Flygläge finns också!</p>
+    <label class="pause-setting mobile-setting">Mobil: avfyrning
+      <select id="auto-fire-pause"><option value="auto">Automatisk</option><option value="manual">Manuell skjutknapp</option></select>
+    </label>
+    <label class="pause-setting">Granatbana
+      <select id="trajectory-pause"><option value="on">Visa kastbana</option><option value="off">Dölj kastbana</option></select>
+    </label>
     <button id="resume" class="primary">FORTSÄTT SPELA</button>
     <button id="restart" class="secondary">STARTA OM MATCH</button>
     <button id="back-menu" class="secondary">TILL HUVUDMENYN</button>
@@ -102,22 +117,33 @@
   </div>
 </section>
 
+<section id="shop" class="screen screen-pause" hidden aria-labelledby="shop-title">
+  <div class="shop-card" role="dialog" aria-modal="true">
+    <p class="eyebrow">FÄLTARSENAL · MATCHEN PAUSAS UNDER KÖPET</p>
+    <h2 id="shop-title">NY UTRUSTNING</h2>
+    <p class="shop-balance">Krediter: <strong id="shop-money">0</strong></p>
+    <div id="shop-items" class="shop-grid"></div>
+    <p id="shop-message" role="status">Välj vapen, rustning eller granater.</p>
+    <button id="shop-close" class="primary">TILLBAKA TILL STRIDEN</button>
+  </div>
+</section>
 <div id="touch-controls" hidden>
   <div id="move-pad" class="move-pad"><div id="move-stick"></div></div>
   <div id="look-zone" aria-label="Svep för att sikta"></div>
   <div class="touch-actions">
-    <button data-touch="fire" class="fire-button">SKJUT</button>
+    <button data-touch="fire" class="fire-button" hidden>SKJUT</button>
     <button data-touch="reload">LADDA</button>
     <button data-touch="jump" id="jump-button">HOPPA</button>
     <button data-touch="interact">E</button>
     <button data-touch="switch">VAPEN</button>
   </div>
   <div class="touch-utilities">
+    <button data-touch="grenade" id="grenade-toggle" aria-label="Välj granat">GRANAT</button>
     <button data-touch="fly" id="flight-toggle" aria-pressed="false">FLYG</button>
     <button data-touch="descend" id="descend-button" hidden>NER</button>
     <button data-touch="scope" id="scope-toggle" aria-pressed="false" hidden>SIKTE</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=hissrum-viewmodels-v6"></script>
+<script type="module" src="./src/main.mjs?v=arsenal-v7"></script>
 </body>
 </html>
