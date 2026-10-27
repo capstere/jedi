@@ -14,7 +14,7 @@ const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065};
-let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
+let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponStage,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
@@ -213,6 +213,12 @@ function initViewWeapon(){
   light.position.set(-1,2,1);weaponScene.add(light);
   weaponCamera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,5);
   weaponCamera.rotation.order='YXZ';
+  weaponStage=new THREE.Group();
+  // Original weapons use 60° view geometry. Portrait displays have a much
+  // narrower horizontal FOV: shrink and shift THE CAMERA OVERLAY, not meshes,
+  // so full skinned hands stay legible without clipping the real GLB walls.
+  if(coarse){weaponStage.scale.setScalar(.72);weaponStage.position.set(-.075,-.045,-.065);}
+  weaponScene.add(weaponStage);
   muzzle=new THREE.Mesh(new THREE.SphereGeometry(.058,9,7),
     new THREE.MeshBasicMaterial({color:0xffdf99,transparent:true,opacity:.92,depthWrite:false,depthTest:false}));
   muzzle.visible=false;weaponScene.add(muzzle);
@@ -414,7 +420,7 @@ function cameraFollow(dt){
    let model=weaponModels.get(p.weapon);
    if(!model){
      model=createStrikeViewWeapon(p.weapon||'p9');
-     weaponModels.set(p.weapon,model);weaponScene.add(model);
+     weaponModels.set(p.weapon,model);weaponStage.add(model);
    }
    currentWeapon=p.weapon;activeViewModel=model;
    weaponSwitchAt=game.state.time;
@@ -725,6 +731,8 @@ try{
      viewmodelSource:activeViewModel?.userData?.hissrumSource??null,
      viewmodelType:activeViewModel?.userData?.originalStrikeKit?'skinned-hands':'fitted-gloves',
      viewmodelSkinnedHands:activeViewModel?.getObjectByName('kit-skinned-glove')?.isSkinnedMesh===true,
+     weaponStageScale:weaponStage?.scale.x??null,
+     botWorldWeapons:[...actors.values()].filter(v=>v.userData.worldGuns?.size>0).length,
      spawnSpread:game?.actors?.length?
        Math.min(...game.actors.flatMap((a,i)=>game.actors.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.z-b.z)))):null,
      flying:!!game?.player?.flying,scopeActive:!!(game?.player?.weapon==='sniper'&&aiming),
