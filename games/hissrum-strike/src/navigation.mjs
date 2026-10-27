@@ -112,37 +112,81 @@ export function createNavigation(world,{spacing=1.45,maxNodes=8000}={}){
 }
 
 export function selectAnchors(navigation,bounds,featureTarget=null){
-  const nodes=navigation.nodes,center={x:(bounds.min.x+bounds.max.x)/2,z:(bounds.min.z+bounds.max.z)/2};
+  const nodes=navigation.nodes;
+  if(!nodes?.length)throw Error('Connected playable room has no walkable nodes');
+  const center={x:(bounds.min.x+bounds.max.x)/2,
+    z:(bounds.min.z+bounds.max.z)/2};
   const w=bounds.max.x-bounds.min.x,d=bounds.max.z-bounds.min.z;
   const focal=featureTarget||center;
-  function group(target,count,avoid=[],clearPlayerSight=false){
-    const ordered=[...nodes].sort((a,b)=>distance(a,target)-distance(b,target));
-    const selected=[];
-    for(const p of ordered){
-      if([...selected,...avoid].some(q=>distance(p,q)<1.85))continue;
-      if(clearPlayerSight&&selected.length){
-        const lead=selected[0],fx=-Math.sin(lead.yaw),fz=-Math.cos(lead.yaw);
-        const distanceForward=(p.x-lead.x)*fx+(p.z-lead.z)*fz;
-        // Never line up a friendly character directly in front of the FPS
-        // camera at 1-2 meters; user's screenshot was obscured by their body.
-        if(distanceForward>-.65&&distance(p,lead)<10)continue;
+  const face=p=>({x:p.x,z:p.z,y:0,
+    yaw:Math.atan2(p.x-focal.x,p.z-focal.z)});
+  const nearest=(p,rest,clearance=2.5)=>{
+    const candidates=nodes.filter(n=>rest.every(q=>distance(n,q)>=clearance));
+    const best=(candidates.length?candidates:nodes)
+      .sort((a,b)=>distance(a,p)-distance(b,p))[0];
+    return face(best);
+  };
+
+  // A broad team zone, not a cluster at its original spawnpoint.
+  // Both teams start on different sides of the real 45x45 model; in a smaller
+  // fixture we use the same proportional split, never artificial rooms.
+  const teamZones=[
+    n=>n.z>=center.z-d*.14,
+    n=>n.z<=center.z+d*.14
+  ];
+  const nearPlayer={x:center.x+w*.13,z:center.z+d*.22};
+  const farEnemy={x:center.x-w*.28,z:center.z-d*.22};
+  const within=Math.max(2.8,Math.min(6.25,Math.min(w,d)*.23));
+  function distribute(target,count,avoid=[],zone,clearPlayer=false){
+    const eligible=nodes.filter(zone),candidates=eligible.length>=count*6?eligible:nodes;
+    const chosen=[],block=[...avoid];
+    // Player/first enemy should begin at recognizable positions. Remaining
+    // spawn candidates use max-min spacing, not nearest first, to spread out.
+    const lead=nearest(target,block,within*.75);chosen.push(lead);
+    while(chosen.length<count){
+      let best=null,bestScore=-Infinity;
+      const phases=[within,within*.83,within*.66,2.0,0];
+      for(const spacing of phases){
+        for(const p of candidates){
+          const dGroup=Math.min(...chosen.map(q=>distance(p,q)));
+          const dOther=avoid.length?Math.min(...avoid.map(q=>distance(p,q))):Infinity;
+          if(dGroup<spacing || dOther<Math.max(1.8,spacing*.67))continue;
+          if(clearPlayer){
+            const v=chosen[0],fx=-Math.sin(v.yaw),fz=-Math.cos(v.yaw);
+            const inFront=(p.x-v.x)*fx+(p.z-v.z)*fz;
+            if(inFront>-.65&&distance(p,v)<10)continue;
+          }
+          const region=Math.max(0,distance(p,target)-Math.min(w,d)*.75);
+          const edgeBias=.10*Math.min(
+            p.x-bounds.min.x,bounds.max.x-p.x,
+            p.z-bounds.min.z,bounds.max.z-p.z);
+          const score=Math.min(dGroup,15)*2.0-
+            .12*distance(p,target)-
+            (dOther<Infinity?Math.max(0,8-dOther)*.7:0)-
+            .08*region+edgeBias;
+          if(score>bestScore){bestScore=score;best=p;}
+        }
+        if(best)break;
       }
-      // Cartridge Strike looks toward (-sin(yaw), -cos(yaw)). The old
-      // formula pointed exactly AWAY from the room center and at the wall.
-      selected.push({x:p.x,z:p.z,y:0,
-        yaw:Math.atan2(p.x-focal.x,p.z-focal.z)});
-      if(selected.length>=count)break;
+      if(!best)throw Error('Not enough real collision-tested Hissrum 12 spawn positions');
+      chosen.push(face(best));block.push(chosen.at(-1));
     }
-    if(selected.length!==count)throw Error('Not enough separated spawn points');
-    return selected;
+    return chosen;
   }
-  // Opposite sides of the same connected real room; not invented exterior rooms.
-  // Start by looking into the recognizable CREFORM and material aisle,
-  // from the *south* side of the actual room, not near its freight elevator.
-  const a=group({x:center.x+w*.13,z:center.z+d*.22},5,[],true);
-  const b=group({x:center.x-w*.28,z:center.z-d*.22},5,a);
-  const bomb=group({x:center.x+w*.19,z:center.z-d*.13},1,[...a,...b])[0];
-  const hostages=group({x:center.x-w*.14,z:center.z+d*.09},2,[...a,...b,bomb]);
-  const rescue={...a[0],radius:2.1};
-  return {analysts:a,counterAnalysts:b,bomb:{...bomb,radius:1.7},hostages,rescue};
+  const analysts=distribute(nearPlayer,5,[],teamZones[0],true);
+  const counterAnalysts=distribute(farEnemy,5,analysts,teamZones[1]);
+  const avoid=[...analysts,...counterAnalysts];
+  const bomb=nearest({x:center.x+w*.19,z:center.z-d*.13},avoid,2.2);
+  const hostages=[
+    nearest({x:center.x-w*.14,z:center.z+d*.09},[...avoid,bomb],2.0),
+  ];
+  hostages.push(nearest({x:center.x-w*.19,z:center.z+d*.22},
+    [...avoid,bomb,...hostages],2.0));
+  const rescue={...analysts[0],radius:2.1};
+  // Every point was sourced from the same connected, real model floor.
+  // Recheck global uniqueness to prevent actor-actor collisions at round start.
+  const spawns=[...analysts,...counterAnalysts];
+  if(spawns.some((a,i)=>spawns.slice(i+1).some(b=>distance(a,b)<1.8)))
+    throw Error('Unsafe overlap in Hissrum 12 spawn selection');
+  return {analysts,counterAnalysts,bomb:{...bomb,radius:1.7},hostages,rescue};
 }
