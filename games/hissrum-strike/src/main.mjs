@@ -64,7 +64,7 @@ function setupGraphics(){
   initViewWeapon();
   initTracers();
   const syncViewport=createGameViewportSync({
-    canvas,renderer,cameras:[camera,weaponCamera],root:document.documentElement
+    canvas,renderer,cameras:[camera,weaponCamera],root:document.documentElement,overlay:$('hud')
   });
   syncViewport();
   // ResizeObserver catches CSS viewport changes even when the browser does
