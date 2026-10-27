@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=arsenal-v7">
+  <link rel="stylesheet" href="./style.css?v=combat-hud-v8">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -26,7 +26,7 @@
     <div class="header-emblem">12<span>V5</span></div>
     <h1 id="game-title">HISSRUM<span>STRIKE</span></h1>
     <p class="subtitle">Du är cirka 28 centimeter lång.<br>Hela slagfältet är Hissrum 12.</p>
-    <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span><span>AUTOELD · FÄLTARSENAL</span></div>
+    <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span><span>STRIDSFEEDBACK · LAGMARKÖRER</span></div>
     <div class="menu-options">
       <label>Spelläge
         <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
@@ -49,6 +49,12 @@
       <label>Granatbana
         <select id="trajectory-mode"><option value="on">Visa kastbana</option><option value="off">Dölj kastbana</option></select>
       </label>
+      <label>Lagkamratsmarkörer
+        <select id="ally-marks-mode"><option value="on">Visa markörer</option><option value="off">Dölj markörer</option></select>
+      </label>
+      <label>Träff- och stridsfeedback
+        <select id="combat-feedback-mode"><option value="on">Tydlig feedback</option><option value="off">Avskalad</option></select>
+      </label>
       <label>Fantasidvärgar
         <select id="dwarf-mode"><option value="on" selected>8 dvärgar</option><option value="off">Av</option></select>
       </label>
@@ -57,14 +63,14 @@
       </label>
     </div>
     <button id="start" class="primary" disabled>FÖRBEREDER MODELLEN…</button>
-    <p class="menu-foot">Riktiga Cartridge Strike-vapen och animerade händer, dödsanimationer och utspridda startplatser över hela hissrummet. Den ursprungliga V5-modellen är oförändrad.</p>
+    <p class="menu-foot">Riktiga Cartridge Strike-vapen och animerade händer, dödsanimationer och utspridda startplatser över hela hissrummet. Lagmarkörer, riktad skadeindikator, tydliga huvudträffar och resultattavla hjälper dig läsa striden. V5-modellen är oförändrad.</p>
     <div class="menu-links">
       <a href="../../STARTA_HISSRUM_12_V5.html">Öppna originalstudion</a>
       <a href="./README.md">Om spelet</a>
     </div>
     <details class="help"><summary>Styrning</summary>
-      <p><strong>Dator:</strong> WASD rörelse · mus sikta/skjut · R ladda · 1–4 vapen · Shift smyg · F flyg/landa · Space upp / Ctrl ned i flygläge · Z eller höger musknapp sniper-sikte · B köp vapen när som helst · G granat · E interagera · Esc pausa.</p>
-      <p><strong>Mobil:</strong> vänster joystick för rörelse, dra till höger för att sikta. FLYG slår på/av svävning; UPP/HOPPA och NER styr höjden. Automatisk eld är standard: sikta på en synlig fiende. Snipern låser på efter 0,32 s. SIKTE zoomar, KÖP öppnar arsenalen och GRANAT väljer granat. Manuell eld finns i pausmenyn.</p>
+      <p><strong>Dator:</strong> WASD rörelse · mus sikta/skjut · R ladda · 1–4 vapen · Shift smyg · F flyg/landa · Space upp / Ctrl ned i flygläge · Z eller höger musknapp sniper-sikte · Tab resultattavla · B köp vapen när som helst · G granat · E interagera · Esc pausa.</p>
+      <p><strong>Mobil:</strong> vänster joystick för rörelse, dra till höger för att sikta. FLYG slår på/av svävning; UPP/HOPPA och NER styr höjden. Automatisk eld är standard: sikta på en synlig fiende. Snipern låser på efter 0,32 s. SIKTE zoomar, KÖP öppnar arsenalen och GRANAT väljer granat. Tryck på matchklockan för resultattavlan. Manuell eld och markörer väljs i pausmenyn.</p>
     </details>
   </div>
 </section>
@@ -72,7 +78,7 @@
 <div id="hud" hidden>
   <header class="hud-top">
     <div class="hud-score"><span class="team-dot cyan"></span><strong id="score-a">0</strong><small>ANALYSTS <b id="alive-a">5</b></small></div>
-    <div class="round-time"><span id="phase">FÖRBEREDELSE</span><strong id="clock">0:00</strong><small id="round">RUNDA 1</small></div>
+    <button type="button" id="scoreboard-button" class="round-time" aria-label="Öppna resultattavla" title="Resultattavla · Tab"><span id="phase">FÖRBEREDELSE</span><strong id="clock">0:00</strong><small id="round">RUNDA 1</small></button>
     <div class="hud-score enemy"><small>COUNTER <b id="alive-b">5</b></small><strong id="score-b">0</strong><span class="team-dot amber"></span></div>
   </header>
   <aside class="map-card"><div class="map-title">HISSRUM 12 <span>1:6</span></div><canvas id="minimap" width="190" height="190" aria-label="Taktisk karta"></canvas><div class="map-legend"><span>● DITT LAG</span><span>● FIENDER</span></div><div class="nearby-label" id="nearby-label">CREFORM · PALLAR · VAGNAR</div></aside>
@@ -82,13 +88,17 @@
   <div id="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
   <div id="auto-status" aria-live="off" hidden>AUTO</div>
   <div id="grenade-status" hidden>G / GRANAT · välj · KASTA · B / KÖP fyller på</div>
+  <div id="ally-marks" aria-hidden="true" hidden></div>
+  <div id="damage-compass" aria-hidden="true" hidden><span hidden><i></i></span><span hidden><i></i></span><span hidden><i></i></span><span hidden><i></i></span></div>
   <div id="hit" aria-hidden="true">×</div>
+  <div id="combat-hit-label" aria-hidden="true" hidden></div>
+  <div id="combat-medal" role="status" hidden><small id="medal-points"></small><strong id="medal-title"></strong><span id="medal-detail"></span></div>
   <div id="damage" aria-hidden="true"></div>
   <div id="notify" role="status"></div>
   <div class="spectating" id="spectating" hidden>UTSLAGEN · <span id="spectate-name">INVÄNTAR RESPAWN</span></div>
   <footer class="hud-bottom">
     <div class="hp-block"><span>HÄLSA</span><strong id="health">100</strong><small id="armor">RUSTNING 0</small></div>
-    <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small></div>
+    <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small><div id="reload-meter" role="progressbar" aria-label="Omladdning" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div></div>
     <button class="sound-button" id="shop-button" aria-label="Öppna vapenbutik">KÖP</button>
     <button class="sound-button" id="sound-button" aria-label="Stäng av ljud" aria-pressed="true">LJUD</button>
     <button class="pause-button" id="pause-button" aria-label="Pausa">Ⅱ</button>
@@ -105,6 +115,12 @@
     <label class="pause-setting">Granatbana
       <select id="trajectory-pause"><option value="on">Visa kastbana</option><option value="off">Dölj kastbana</option></select>
     </label>
+    <label class="pause-setting">Lagkamratsmarkörer
+      <select id="ally-marks-pause"><option value="on">Visa markörer</option><option value="off">Dölj markörer</option></select>
+    </label>
+    <label class="pause-setting">Träff- och stridsfeedback
+      <select id="combat-feedback-pause"><option value="on">Tydlig feedback</option><option value="off">Avskalad</option></select>
+    </label>
     <button id="resume" class="primary">FORTSÄTT SPELA</button>
     <button id="restart" class="secondary">STARTA OM MATCH</button>
     <button id="back-menu" class="secondary">TILL HUVUDMENYN</button>
@@ -112,11 +128,22 @@
 </section>
 <section id="match-end" class="screen screen-pause" hidden>
   <div class="pause-card"><p class="eyebrow">MATCHEN ÄR AVGJORD</p><h2 id="winner">MATCH KLAR</h2>
+    <button id="end-stats" class="secondary">VISA RESULTATTAVLAN</button>
     <button id="play-again" class="primary">SPELA IGEN</button>
     <button id="end-menu" class="secondary">HUVUDMENY</button>
   </div>
 </section>
 
+<section id="scoreboard" class="screen screen-pause" hidden aria-labelledby="scoreboard-title">
+  <div class="score-card" role="dialog" aria-modal="true">
+    <p class="eyebrow">HISSRUM 12 · RESULTAT FÖR DENNA MATCH</p>
+    <h2 id="scoreboard-title">RESULTATTAVLA</h2>
+    <p id="scoreboard-summary"></p>
+    <table class="score-table"><caption>Elimineringar, dödsfall, assist och poäng</caption><thead><tr><th scope="col">SPELARE</th><th scope="col"><abbr title="Elimineringar">K</abbr></th><th scope="col"><abbr title="Dödsfall">D</abbr></th><th scope="col"><abbr title="Assist">A</abbr></th><th scope="col">POÄNG</th></tr></thead><tbody id="scoreboard-rows"></tbody></table>
+    <p class="score-note">Poäng är matchstatistik, inte butikskrediter. Botmatchen är pausad medan tavlan visas.</p>
+    <button id="scoreboard-close" class="primary">TILLBAKA · TAB / ESC</button>
+  </div>
+</section>
 <section id="shop" class="screen screen-pause" hidden aria-labelledby="shop-title">
   <div class="shop-card" role="dialog" aria-modal="true">
     <p class="eyebrow">FÄLTARSENAL · MATCHEN PAUSAS UNDER KÖPET</p>
@@ -144,6 +171,6 @@
     <button data-touch="scope" id="scope-toggle" aria-pressed="false" hidden>SIKTE</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=arsenal-v7"></script>
+<script type="module" src="./src/main.mjs?v=combat-hud-v8"></script>
 </body>
 </html>
