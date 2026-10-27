@@ -1,6 +1,6 @@
 name: Hissrum Strike verification
 concurrency:
-  group: hissrum-strike-${{ github.head_ref || github.ref_name }}
+  group: hissrum-strike-v8-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 on:
   push:
