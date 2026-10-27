@@ -82,6 +82,7 @@ jobs:
           path: |
             hissrum-strike-browser.png
             hissrum-strike-mobile.png
+            hissrum-strike-landscape-crosshair.png
             hissrum-strike-sniper.png
             hissrum-strike-p9-hands.png
             hissrum-strike-blood-dwarfs.png

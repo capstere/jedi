@@ -283,6 +283,46 @@ async function launchReadyPage(context,tag,issues){
   assert.ok(zoom.fov<76);
   await mobile.locator('#scope-toggle').tap();
   await mobile.waitForTimeout(120);
+
+  // Regression: mobile landscape after portrait (Safari can leave Three.js's
+  // prior setSize inline width behind, making the crosshair miss canvas center).
+  async function checkAimAlignment(label,expectedWidth){
+    // Safari and emulated Chromium can paint CSS with the NEW dimensions
+    // before ResizeObserver has had a chance to update the WebGL cameras.
+    // Wait for that backbuffer/projection update instead of assuming an
+    // orientation change becomes synchronous with setViewportSize().
+    await mobile.waitForFunction(expected=>{
+      const v=window.__hissrumDiagnostics()?.viewport;
+      if(!v)return false;
+      return Math.abs(v.canvas.width-expected)<1 &&
+        Math.abs(v.reticle.x-(v.canvas.x+v.canvas.width/2))<.6 &&
+        Math.abs(v.reticle.y-(v.canvas.y+v.canvas.height/2))<.6 &&
+        Math.abs(v.cameraAspect-v.canvas.width/v.canvas.height)<.005 &&
+        Math.abs(v.weaponAspect-v.cameraAspect)<.005;
+    },expectedWidth,{timeout:20000});
+    const v=await mobile.evaluate(()=>window.__hissrumDiagnostics().viewport);
+    const cx=v.canvas.x+v.canvas.width/2,cy=v.canvas.y+v.canvas.height/2;
+    assert.ok(Math.abs(v.canvas.width-expectedWidth)<1,label+': wrong CSS canvas width '+v.canvas.width);
+    assert.ok(Math.abs(v.reticle.x-cx)<.6,label+': horizontal crosshair offset '+(v.reticle.x-cx));
+    assert.ok(Math.abs(v.reticle.y-cy)<.6,label+': vertical crosshair offset '+(v.reticle.y-cy));
+    assert.ok(Math.abs(v.cameraAspect-v.canvas.width/v.canvas.height)<.005,label+': world camera aspect mismatch');
+    assert.ok(Math.abs(v.weaponAspect-v.cameraAspect)<.005,label+': weapon camera aspect mismatch');
+    assert.equal(v.inlineCanvasWidth,'',label+': WebGL must not set stale inline width');
+    assert.equal(v.inlineCanvasHeight,'',label+': WebGL must not set stale inline height');
+    assert.ok(v.pixelWidth>0&&v.pixelHeight>0,label+': rendering buffer exists');
+    return v;
+  }
+  await checkAimAlignment('portrait',390);
+  await mobile.setViewportSize({width:768,height:353});
+  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-768)<1,
+    null,{timeout:5000});
+  await checkAimAlignment('rotated landscape',768);
+  await mobile.screenshot({timeout:90000,path:'hissrum-strike-landscape-crosshair.png'});
+  await mobile.setViewportSize({width:390,height:844});
+  await mobile.waitForFunction(()=>Math.abs(document.querySelector('#scene').getBoundingClientRect().width-390)<1,
+    null,{timeout:5000});
+  await checkAimAlignment('portrait restored',390);
+  console.log('PASS: canvas, reticle, world/weapon cameras stay aligned through Safari-style portrait/landscape resizing');
   const rects=await mobile.evaluate(()=>{
     const ids=['move-pad','pause-button','health','ammo','look-zone','minimap'];
     const r={};
