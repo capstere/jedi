@@ -194,7 +194,7 @@ async function launchReadyPage(context,tag,issues){
   console.log('PASS: Quaternius Death01 plays for fallen bots');
   assert.equal(await page.evaluate(()=>window.__hissrumVisualTest.previewPlayerDeath()),true);
   await page.waitForFunction(()=>window.__hissrumDiagnostics()?.playerDeathCamera===true,null,{timeout:20000});
-  console.log('PASS: player's Death01 is visible in a short third-person fall');
+  console.log("PASS: player's Death01 is visible in a short third-person fall");
   await page.keyboard.press('Escape');
   await page.waitForSelector('#pause:not([hidden])',{timeout:5000});
   await page.locator('#resume').click();
