@@ -29,7 +29,9 @@ jobs:
       - name: Check module syntax
         run: find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - name: Check test-runner source syntax before installing Chromium
-        run: node --check games/hissrum-strike/tests/browser-smoke.cjs
+        run: |
+          node --check games/hissrum-strike/tests/browser-smoke.cjs
+          node --check games/hissrum-strike/tests/grenade-view-browser.cjs
       - name: Run deterministic navigation and model tests
         run: node --test games/hissrum-strike/tests/*.test.mjs
 
@@ -54,6 +56,9 @@ jobs:
           if ! node -e "require('playwright').chromium.launch({headless:true,args:['--no-sandbox']}).then(b=>b.close()).catch(e=>{console.error(e.message);process.exit(1)})"; then
             npx playwright install-deps chromium
           fi
+      - name: Verify grenade buffer reuse and tank preview guard in Chromium
+        timeout-minutes: 2
+        run: node games/hissrum-strike/tests/grenade-view-browser.cjs
       - name: Load the real GLB and play a smoke round
         run: node games/hissrum-strike/tests/browser-smoke.cjs
       - uses: actions/upload-artifact@v4
