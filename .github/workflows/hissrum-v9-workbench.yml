@@ -11,12 +11,15 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare exact pinned browser dependency for offline QA
+        run: |
+          mkdir -p qa-runtime
+          for name in three.module.js three.core.js; do
+            curl -fLsS --retry 3 --max-time 45 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/$name" -o "qa-runtime/$name"
+          done
+          test -s qa-runtime/three.core.js
       - uses: actions/upload-artifact@v4
         with:
-          name: hissrum-v9-source
-          path: |
-            games/hissrum-strike/
-            Hissrum12_V5_med_39_objekt.glb
-            .github/workflows/hissrum-strike.yml
-          include-hidden-files: true
+          name: hissrum-v9-qa-runtime
+          path: qa-runtime/
           retention-days: 1
