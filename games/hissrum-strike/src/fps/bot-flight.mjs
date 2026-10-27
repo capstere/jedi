@@ -1,3 +1,4 @@
+import {updateAirPatrol} from './air-patrol.mjs';
 /** Hissrum 12 bot flight: tactical, bounded and collision-aware.
  * The original Cartridge Strike bot controller still chooses its route,
  * aim and target. Flight only adds a vertical plan over the same real GLB
@@ -8,6 +9,10 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function updateBotFlight(game,actor,input,dt){
  if(!actor.bot||!actor.alive||!game.config.botFlight)return input;
+ // The high-range controller needs the actual room extent and connected GLB floor.
+ // Keep the existing adapter for non-agile/legacy maps without that geometry.
+ if(game.config.agileFlight&&game.world.bounds&&game.world.navigation?.nodes?.length)
+   return updateAirPatrol(game,actor,input,dt);
  const now=game.state.time,world=game.world,agile=game.config.agileFlight===true;
  const state=actor.airPatrol??={mode:'ground',nextAt:(agile?now:0)+(agile?.7:2)+actor.index*(agile?.36:.79)+(actor.team==='counterAnalysts'?.4:0),until:0,goalY:0,landSince:0,nextVantage:0,side:actor.index%2?1:-1};
  // Respawn and fresh rounds force flying=false. Clear any interrupted patrol
