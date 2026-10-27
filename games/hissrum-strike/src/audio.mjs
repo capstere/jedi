@@ -2,6 +2,7 @@
  * Kenney CC0 samples and modifications: docs/fps-assets.json and THIRD_PARTY_NOTICES.md.
  * All scheduled sources are owned, bounded and stopped on pause/round reset.
  */
+export const MAX_AUDIO_VOICES = 96;
 export const AUDIO_SAMPLES = Object.freeze([
   'footstep_carpet_000', 'footstep_carpet_001', 'footstep_carpet_002',
   'footstep_concrete_000', 'footstep_concrete_001', 'footstep_concrete_002',
@@ -33,6 +34,10 @@ export class AudioSystem {
     this.lastSimTime = -Infinity;
     this.generation = 0;
     this.disposed = false;
+    this.listenerTarget = null;
+    this.listenerValues = new Float64Array(9);
+    this.spatialEvent = null;
+    this.spatialSnapshot = null;
     this.stats = { played: 0, occluded: 0, stale: 0, duplicates: 0, dropped: 0 };
   }
 
@@ -85,18 +90,48 @@ export class AudioSystem {
 
   updateListener(listener) {
     if (!this.context || !listener) return;
-    this.listener = point(listener.position || listener);
+    const p = listener.position || listener;
+    // Preserve the current listener object, but always refresh its identity:
+    // switching spectator/driver at the same coordinates changes own sounds.
+    this.listener ??= { x: 0, y: 0, z: 0 };
+    this.listener.x = Number(p.x) || 0;
+    this.listener.y = Number(p.y) || 0;
+    this.listener.z = Number(p.z) || 0;
     this.listenerId = listener.id ?? listener.actorId;
     const yaw = Number(listener.yaw) || 0, pitch = Number(listener.pitch) || 0;
-    const forward = listener.forward || { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) };
+    const cp = Math.cos(pitch), forward = listener.forward;
+    const fx = forward ? forward.x : -Math.sin(yaw) * cp;
+    const fy = forward ? forward.y : Math.sin(pitch);
+    const fz = forward ? forward.z : -Math.cos(yaw) * cp;
     const l = this.context.listener, t = this.context.currentTime;
+    const force = this.listenerTarget !== l, v = this.listenerValues;
     if (l.positionX) {
-      for (const [key, value] of Object.entries({ positionX: this.listener.x, positionY: this.listener.y,
-        positionZ: this.listener.z, forwardX: forward.x, forwardY: forward.y, forwardZ: forward.z,
-        upX: 0, upY: 1, upZ: 0 })) l[key].setValueAtTime(value, t);
+      this.listenerParam(l, 'positionX', 0, this.listener.x, t, force);
+      this.listenerParam(l, 'positionY', 1, this.listener.y, t, force);
+      this.listenerParam(l, 'positionZ', 2, this.listener.z, t, force);
+      this.listenerParam(l, 'forwardX', 3, fx, t, force);
+      this.listenerParam(l, 'forwardY', 4, fy, t, force);
+      this.listenerParam(l, 'forwardZ', 5, fz, t, force);
+      this.listenerParam(l, 'upX', 6, 0, t, force);
+      this.listenerParam(l, 'upY', 7, 1, t, force);
+      this.listenerParam(l, 'upZ', 8, 0, t, force);
     } else {
-      l.setPosition(this.listener.x, this.listener.y, this.listener.z);
-      l.setOrientation(forward.x, forward.y, forward.z, 0, 1, 0);
+      // Retain the legacy Web Audio path for older Safari implementations.
+      if (force || v[0] !== this.listener.x || v[1] !== this.listener.y || v[2] !== this.listener.z)
+        l.setPosition(this.listener.x, this.listener.y, this.listener.z);
+      if (force || v[3] !== fx || v[4] !== fy || v[5] !== fz)
+        l.setOrientation(fx, fy, fz, 0, 1, 0);
+      v[0] = this.listener.x; v[1] = this.listener.y; v[2] = this.listener.z;
+      v[3] = fx; v[4] = fy; v[5] = fz;
+      v[6] = 0; v[7] = 1; v[8] = 0;
+    }
+    this.listenerTarget = l;
+  }
+
+  listenerParam(listener, key, index, value, time, force) {
+    if (force || this.listenerValues[index] !== value) {
+      listener[key].setValueAtTime(value, time);
+      this.listenerValues[index] = value;
     }
   }
 
@@ -121,7 +156,7 @@ export class AudioSystem {
         this.stats.stale++; continue;
       }
       if (!this.context || this.context.state !== 'running' || !this.listener || this.volume === 0) continue;
-      if (this.active.size >= 96) { this.stats.dropped++; continue; }
+      if (this.active.size >= MAX_AUDIO_VOICES) { this.stats.dropped++; continue; }
       this.play(event);
     }
   }
@@ -175,13 +210,25 @@ export class AudioSystem {
     this.ambient.length=0;this.ambientRoom=null;
   }
 
-  channel(event, volume = 1, delay = 0) {
-    const ctx = this.context, gain = ctx.createGain(), filter = ctx.createBiquadFilter();
+  spatialSound(event) {
+    if (event === this.spatialEvent && this.spatialSnapshot) return this.spatialSnapshot;
     const position = point(event.position || event);
-    const global = ['result', 'match', 'round'].includes(event.type);
+    const global = event.type === 'result' || event.type === 'match' || event.type === 'round';
     const own = event.actorId != null && event.actorId === this.listenerId;
     let clear = true;
-    if (!own && !global && this.world?.segmentClear) clear = this.world.segmentClear(this.listener, position, { vision: false });
+    if (!own && !global && this.world?.segmentClear)
+      clear = this.world.segmentClear(this.listener, position, { vision: false });
+    const spatial = { position, global, own, clear };
+    // Reuse ONLY inside one synchronous play() invocation. A new event must
+    // raycast again, even if its source or listener position is unchanged.
+    // Moving obstacles/doors and listener changes therefore remain audible.
+    if (event === this.spatialEvent) this.spatialSnapshot = spatial;
+    return spatial;
+  }
+
+  channel(event, volume = 1, delay = 0) {
+    const ctx = this.context, gain = ctx.createGain(), filter = ctx.createBiquadFilter();
+    const { position, global, own, clear } = this.spatialSound(event);
     gain.gain.value = volume * (clear ? 1 : .24);
     filter.type = 'lowpass'; filter.frequency.value = clear ? 18000 : 780;
     gain.connect(filter);
@@ -197,6 +244,14 @@ export class AudioSystem {
     return { gain, nodes, when: ctx.currentTime + delay };
   }
 
+  voiceAvailable() {
+    if (this.disposed || !this.context || this.context.state !== 'running' || this.volume === 0) return false;
+    // One event may schedule several layers. Enforce the ceiling BEFORE
+    // creating a source, filter, panner, or synthetic noise sample buffer.
+    if (this.active.size >= MAX_AUDIO_VOICES) { this.stats.dropped++; return false; }
+    return true;
+  }
+
   track(source, channel, duration) {
     const item = { source, nodes: channel.nodes };
     this.active.add(item);
@@ -210,6 +265,7 @@ export class AudioSystem {
   }
 
   sample(name, event, volume = .4, rate = 1, delay = 0, maxDuration = 2) {
+    if (!this.voiceAvailable()) return;
     const buffer = this.buffers.get(name);
     if (!buffer) return this.noise(event, .06, volume * .15, 1000, delay);
     const source = this.context.createBufferSource();
@@ -223,6 +279,7 @@ export class AudioSystem {
   }
 
   tone(event, frequency, duration, volume, type = 'sine', endFrequency = frequency, delay = 0) {
+    if (!this.voiceAvailable()) return;
     const osc = this.context.createOscillator(), channel = this.channel(event, volume, delay);
     osc.type = type;
     osc.frequency.setValueAtTime(frequency, channel.when);
@@ -233,6 +290,7 @@ export class AudioSystem {
   }
 
   noise(event, duration, volume, cutoff = 4000, delay = 0) {
+    if (!this.voiceAvailable()) return;
     const ctx = this.context, count = Math.ceil(ctx.sampleRate * duration), buffer = ctx.createBuffer(1, count, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     // Audio-only deterministic variation; never consumes the match PRNG.
@@ -249,6 +307,9 @@ export class AudioSystem {
     this.serial++;
     const n = this.serial % 3, varied = 1 + ((this.serial % 7) - 3) * .025;
     const sound = { ...event, type };
+    const previousEvent = this.spatialEvent, previousSnapshot = this.spatialSnapshot;
+    this.spatialEvent = sound; this.spatialSnapshot = null;
+    try {
     switch (type) {
       case 'step': {
         const floor = event.surface || this.world?.materialAt?.(event.x, event.z) || 'vinyl';
@@ -306,11 +367,17 @@ export class AudioSystem {
       default: return;
     }
     this.stats.played++;
+    } finally {
+      // Cleanup also covers unsupported events, ignored damage and exceptions.
+      this.spatialEvent = previousEvent; this.spatialSnapshot = previousSnapshot;
+    }
   }
 
   /** Stop all tails and future scheduled reload/result notes. No setTimeouts survive a reset. */
   reset() {
     this.generation++;
+    this.listenerTarget = null;
+    this.spatialEvent = null; this.spatialSnapshot = null;
     this.stopAmbient();
     for (const item of this.active) {
       item.source.onended = null;
