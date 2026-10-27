@@ -1,0 +1,45 @@
+name: Integrate locally verified Hissrum v8
+on:
+  push:
+    branches: [feat/hissrum-riposte-combat-hud-v8]
+    paths: ['.github/workflows/hissrum-v8-integrate.yml']
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/hissrum-riposte-combat-hud-v8
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply exact reviewed integration
+        run: |
+          set -euo pipefail
+          python3 .hissrum-v8/integrate.py
+          python3 .hissrum-v8/browser-checks.py
+          echo '09e8af8ed522d7be1515d816e571cd60329114b3a9e670e2db5192fd980a4ad5  games/hissrum-strike/src/combat-hud.mjs' | sha256sum -c
+          echo '02cb5bc85d99cc67aee84f716dff2402d0d6a2b27785c4eed7fed71eede13c70  games/hissrum-strike/src/fps/combat-readability.mjs' | sha256sum -c
+          echo '59d17736480ba66c03b095cce4a21d306c8c97f957d31b499b016cc7592fc961  games/hissrum-strike/src/main.mjs' | sha256sum -c
+          echo '273c81cf299df230dca9ccc8f7813d424391591c983324a85d4919a3e357a56d  games/hissrum-strike/index.html' | sha256sum -c
+          echo '59e902433605f957283735931788453f5d92631c6ebfc74b1f8706ce000135f7  games/hissrum-strike/tests/combat-readability.test.mjs' | sha256sum -c
+          echo '3363c6990fced46732be52627e26f847acb3d5fd85cb1eb823e188eb2ccdb3fc  games/hissrum-strike/tests/browser-smoke.cjs' | sha256sum -c
+      - name: Check syntax and deterministic regressions
+        run: |
+          find games/hissrum-strike/src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check games/hissrum-strike/tests/browser-smoke.cjs
+          node --test games/hissrum-strike/tests/*.test.mjs
+      - name: Commit production changes only
+        run: |
+          set -euo pipefail
+          git rm -r .hissrum-v8
+          git rm .github/workflows/hissrum-v8-integrate.yml
+          git add games/hissrum-strike .github/workflows/hissrum-strike.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Integrate verified Riposte-inspired combat feedback and scoreboard; remove temporary tools'
+          git push origin HEAD:refs/heads/feat/hissrum-riposte-combat-hud-v8
