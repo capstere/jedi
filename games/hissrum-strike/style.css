@@ -322,3 +322,6 @@ body.sniper-scoped #crosshair{opacity:0}
 @media(prefers-reduced-motion:reduce){.ally-marker{transition:none}}
 
 body.combat-medal-visible #notify{opacity:0!important}
+
+/* Allow portrait/landscape scoreboard scrolling without enabling gameplay gestures. */
+#scoreboard{touch-action:pan-y;overscroll-behavior:contain}

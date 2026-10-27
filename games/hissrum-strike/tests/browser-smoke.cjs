@@ -366,8 +366,20 @@ async function launchReadyPage(context,tag,issues){
   await mobile.locator('#auto-fire-pause').selectOption('manual');
   await mobile.locator('#resume').tap();
   await mobile.evaluate(()=>window.__hissrumVisualTest.prepareAutoFire('smg'));
-  await mobile.locator('[data-touch="fire"]').tap();
-  await mobile.waitForFunction(()=>window.__hissrumDiagnostics().magazine<30,null,{timeout:45000});
+  // Hold an actual touch until Game registers a shot. A tap can start
+  // and end between software-WebGL frames without ever being sampled.
+  const fireBounds=await mobile.locator('[data-touch="fire"]').boundingBox();
+  assert.ok(fireBounds);
+  const heldTouch=await phone.newCDPSession(mobile);
+  await heldTouch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{
+    x:fireBounds.x+fireBounds.width/2,y:fireBounds.y+fireBounds.height/2,id:7
+  }]});
+  try{
+    await mobile.waitForFunction(()=>window.__hissrumDiagnostics().magazine<30,null,{timeout:45000});
+  }finally{
+    await heldTouch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await heldTouch.detach();
+  }
   await mobile.locator('[data-touch="reload"]').tap();
   await mobile.waitForFunction(()=>!document.getElementById('reload-meter').hidden,null,{timeout:15000});
   assert.ok(Number(await mobile.locator('#reload-meter').getAttribute('aria-valuenow'))>=0);
