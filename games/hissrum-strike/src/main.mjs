@@ -4,13 +4,14 @@ import {Game,WEAPONS} from './fps/game.mjs?v=hissrum-ai-v5';
 import {AudioSystem} from './audio.mjs';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
-import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar} from './characters/character-library.mjs';
+import {loadCharacterLibrary,charactersReady,createAuthoredAvatar,animateAuthored,disposeAvatar,posedBounds} from './characters/character-library.mjs';
+import {createStrikeViewWeapon,animateStrikeViewWeapon} from './weapon-kit/weapon-view.mjs';
 
 const $=id=>document.getElementById(id);
 const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065};
-let scene,renderer,camera,world,game,modelRoot,weaponRoot,weaponBase,sniperRoot,muzzle,weaponWobble=0,gunKick=0,shotUntil=0;
+let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,hitUntil=0,damageUntil=0;
 let currentPhase='',currentWeapon='',spectateActor=null,pointerLockedAt=0;
@@ -44,15 +45,11 @@ function setupGraphics(){
   initTracers();
   addEventListener('resize',()=>{
     camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    if(weaponCamera){weaponCamera.aspect=innerWidth/innerHeight;weaponCamera.updateProjectionMatrix();}
     renderer.setSize(innerWidth,innerHeight);
   });
 }
 
-const mat=(color,metalness=.15)=>new THREE.MeshStandardMaterial({color,roughness:.67,metalness});
-const darkMat=mat('#1a2931',.62);
-function part(group,geo,material,x,y,z){
- const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,y,z);group.add(mesh);return mesh;
-}
 /** EXACT authored Quaternius skins and real animation clips from Cartridge Strike.
  *  Geometry, animations and textures are shared; skeleton and mixers are
  *  unique per actor so bots can move independently in the 1:6 room.
@@ -146,30 +143,18 @@ function installRoomLighting(){
   console.info('[Hissrum Strike] Interior material and fixture lights',{twoSided});
 }
 function initViewWeapon(){
- weaponRoot=new THREE.Group();weaponRoot.position.set(.28,-.29,-.50);camera.add(weaponRoot);
- weaponBase=new THREE.Group();weaponRoot.add(weaponBase);
- part(weaponBase,new THREE.BoxGeometry(.18,.13,.63),mat('#263c46',.7),0,0,0);
- part(weaponBase,new THREE.BoxGeometry(.10,.09,.28),darkMat,-.025,.08,-.14);
- part(weaponBase,new THREE.CylinderGeometry(.045,.045,.32,10),darkMat,0,.015,-.45).rotation.x=Math.PI/2;
- part(weaponBase,new THREE.BoxGeometry(.10,.28,.13),mat('#446574'),.035,-.19,.09);
- part(weaponBase,new THREE.BoxGeometry(.09,.07,.08),mat('#80e9d1'),-.02,.15,-.29);
- part(weaponBase,new THREE.BoxGeometry(.14,.21,.19),mat('#728d83'),-.12,-.13,.13);
- // Scope 5: its own longer rifle silhouette, optics + engraved mount rather
- // than merely renaming the generic SMG. Game combat and ammo stay authoritative.
- sniperRoot=new THREE.Group();weaponRoot.add(sniperRoot);sniperRoot.visible=false;
- const finish=mat('#253537',.8),barrel=mat('#182427',.87),mount=mat('#526c6d',.55),glass=mat('#719b9a',.35);
- part(sniperRoot,new THREE.BoxGeometry(.19,.15,.88),finish,0,0,-.16);
- part(sniperRoot,new THREE.BoxGeometry(.14,.16,.38),finish,.01,-.065,.35);
- part(sniperRoot,new THREE.BoxGeometry(.095,.30,.14),finish,.025,-.20,.13);
- part(sniperRoot,new THREE.CylinderGeometry(.035,.035,.62,12),barrel,0,.015,-.88).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.063,.052,.14,12),mount,0,.016,-1.17).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.BoxGeometry(.10,.10,.25),mount,0,.15,-.37);
- part(sniperRoot,new THREE.CylinderGeometry(.083,.083,.41,14),barrel,0,.24,-.40).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.616).rotation.x=Math.PI/2;
- part(sniperRoot,new THREE.CylinderGeometry(.073,.073,.016,14),glass,0,.24,-.18).rotation.x=Math.PI/2;
- muzzle=part(weaponRoot,new THREE.SphereGeometry(.13,8,6),
-   new THREE.MeshBasicMaterial({color:'#ffe1a0'}),0,.016,-.78);
- muzzle.visible=false;
+  // Reproduce Cartridge Strike's dedicated 60° first-person renderer. Its
+  // weapon meshes and CC0 gloves keep their original geometry and animations,
+  // while world depth is cleared only for the presentation overlay.
+  weaponScene=new THREE.Scene();
+  weaponScene.add(new THREE.HemisphereLight(0xe2eff7,0x6c665b,1.5));
+  const light=new THREE.DirectionalLight(0xffe7c8,2.05);
+  light.position.set(-1,2,1);weaponScene.add(light);
+  weaponCamera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.01,5);
+  weaponCamera.rotation.order='YXZ';
+  muzzle=new THREE.Mesh(new THREE.SphereGeometry(.058,9,7),
+    new THREE.MeshBasicMaterial({color:0xffdf99,transparent:true,opacity:.92,depthWrite:false,depthTest:false}));
+  muzzle.visible=false;weaponScene.add(muzzle);
 }
 function initTracers(){
  for(let i=0;i<38;i++){
@@ -262,7 +247,8 @@ function startGame(){
  clearScope();syncSpecialHUD();
  currentPhase='';currentWeapon='';
  active=true;paused=false;keys.clear();fire=false;touchFire=false;interact=false;
- weaponRoot.visible=true;setHidden('menu',true);setHidden('pause',true);
+ currentWeapon='';activeViewModel=null;weaponShotAt=-Infinity;
+ setHidden('menu',true);setHidden('pause',true);
  setHidden('match-end',true);setHidden('hud',false);
  setHidden('touch-controls',!coarse);
  notice('DU ÄR MINIATYR · HISSRUM 12',3);
@@ -294,7 +280,7 @@ function mainMenu(){
  game=null;clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
  setHidden('touch-controls',true);setHidden('menu',false);
- weaponRoot.visible=false;
+ if(activeViewModel)activeViewModel.visible=false;
  if(document.pointerLockElement===canvas)document.exitPointerLock();
 }
 const feed=[];
@@ -320,7 +306,7 @@ function updateEvents(){
    if(event.type==='kill')addKill(event);
    if(event.type==='combat-hit'&&event.actorId===game.player.id)hitUntil=performance.now()+170;
    if(event.type==='damage'&&event.actorId===game.player.id)damageUntil=performance.now()+220;
-   if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;}
+   if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;weaponShotAt=game.state.time;}
    if(event.type==='reload'&&event.actorId===game.player.id)notice('LADDAR OM',1.4);
    if(event.type==='planted')notice('BOMBEN PLANTERAD',3.2);
    if(event.type==='defuse')notice('DESARMERING PÅGÅR',2);
@@ -345,25 +331,28 @@ function cameraFollow(dt){
  }
  setHidden('scope-overlay',!scopeActive);
  document.body.classList.toggle('sniper-scoped',scopeActive);
- weaponBase.visible=p.weapon!=='sniper';
- sniperRoot.visible=p.weapon==='sniper';
- weaponRoot.visible=p.alive&&!scopeActive;
  gunKick=Math.max(0,gunKick-dt*.45);
- weaponWobble+=(Math.min(1,p.moving/4)-weaponWobble)*Math.min(1,dt*7);
- weaponRoot.position.set(coarse?.29:.30,coarse?-.41:-.31+Math.sin(game.state.time*10)*.015*weaponWobble-gunKick*.3,coarse?-.86:-.52+gunKick);
- weaponRoot.rotation.set(gunKick*.8,0,Math.sin(game.state.time*7)*.026*weaponWobble);
- const w=WEAPONS[p.weapon];
- const s=coarse?.64:1;
- if(p.weapon==='sniper'){
-   // Long-range rifle rests low/right, never masks the target or the CREFORM
-   // scenery. Scope mode temporarily hides the whole gun.
-   weaponRoot.position.set(coarse?.38:.49,coarse?-.46:-.40,coarse?-1.00:-.92);
-   weaponRoot.rotation.z=-.035;
-   weaponRoot.scale.setScalar(coarse?.44:.58);
- }else if(w?.slot==='pistol')weaponRoot.scale.set(.7*s,.8*s,.68*s);
- else if(w?.slot==='knife')weaponRoot.scale.set(.28*s,.5*s,.68*s);
- else weaponRoot.scale.set(s,s,s);
- muzzle.visible=performance.now()<shotUntil;
+ if(p.alive && (p.weapon!==currentWeapon||!activeViewModel)){
+   if(activeViewModel)activeViewModel.visible=false;
+   let model=weaponModels.get(p.weapon);
+   if(!model){
+     model=createStrikeViewWeapon(p.weapon||'p9');
+     weaponModels.set(p.weapon,model);weaponScene.add(model);
+   }
+   currentWeapon=p.weapon;activeViewModel=model;
+   weaponSwitchAt=game.state.time;
+ }
+ if(activeViewModel){
+   activeViewModel.visible=p.alive&&!scopeActive;
+   if(activeViewModel.visible){
+     const pose=animateStrikeViewWeapon(activeViewModel,p,game.state.time,dt,{
+       shotAt:weaponShotAt,switchAt:weaponSwitchAt,recoil:gunKick,
+       reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches
+     });
+     muzzle.position.copy(pose.muzzle);
+   }
+ }
+ muzzle.visible=!!activeViewModel?.visible&&performance.now()<shotUntil;
 }
 function activeInput(){
  const p=game?.player;
@@ -523,6 +512,12 @@ function frame(now){
  }
  for(const t of tracers)if(t.until<now)t.line.visible=false;
  renderer.render(scene,camera);
+ if(activeViewModel?.visible){
+   renderer.autoClear=false;
+   renderer.clearDepth();
+   renderer.render(weaponScene,weaponCamera);
+   renderer.autoClear=true;
+ }
 }
 
 window.addEventListener('keydown',e=>{
