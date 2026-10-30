@@ -2,7 +2,7 @@ import {readPreferences,writePreferences,sanitizePreferences,pixelRatioFor,baseF
 import {lifeReadout} from './life-readout.mjs';
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
-import {Game,WEAPONS} from './fps/game.mjs?v=cartridge-tank-v9';
+import {Game,WEAPONS} from './fps/game.mjs?v=combat-comfort-v18';
 import {AudioSystem} from './audio.mjs?v=cartridge-tank-v9';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';

@@ -1,12 +1,12 @@
 import {initializeTank,tickTank,controlTank,toggleTank,nearTank,drivingTank,tankRay,damageTank} from './cartridge-tank.mjs';
 import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
 import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
-import { BotController } from './bots.mjs?v=hissrum-ai-v5';
+import { BotController } from './bots.mjs?v=combat-comfort-v18';
 import {updateBotFlight} from './bot-flight.mjs?v=arsenal-v7';
 import {rayBody as rayActor,automaticTrigger,resetAutoAim} from './aim-controls.mjs?v=cartridge-tank-v9';
 import {freshRecoil,recoverRecoil,kickRecoil,applyAimRecoil} from './recoil.mjs';
 import {grenadeLaunch,advanceGrenade} from './grenade-ballistics.mjs';
-import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=cartridge-tank-v9';
+import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=combat-comfort-v18';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);

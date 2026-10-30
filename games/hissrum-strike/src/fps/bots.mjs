@@ -2,7 +2,7 @@
 // bundled. Collision and paths come only from the accepted floor adapter.
 import { MemorySystem, SeekBehavior, State, StateMachine, Vector3, Vehicle } from '../../vendor/yuka/yuka.module.js';
 import { WEAPONS } from './config.mjs';
-import {actionObjective,friendlyLineClear} from './action-rules.mjs';
+import {actionObjective,friendlyLineClear} from './action-rules.mjs?v=combat-comfort-v18';
 import {angleDifference} from './riposte-fps-math.mjs';
 import { distanceSegment } from './physics.mjs';
 import {chooseTactic,latestSquadContact,planTacticalPosition} from './tactical-ai.mjs';

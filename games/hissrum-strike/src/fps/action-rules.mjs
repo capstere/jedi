@@ -5,7 +5,7 @@ import {freshRecoil} from './recoil.mjs';
 import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs';
 /** Arcade rules. Simulation time only; visual/audio systems never own damage or respawns. */
 import {seededRandom, WEAPONS} from './config.mjs';
-import {BotController} from './bots.mjs';
+import {BotController} from './bots.mjs?v=combat-comfort-v18';
 export const MODES=Object.freeze({classic:'Klassiska rundor',endless:'Endless Action · auto-respawn'});
 export const RADIO=Object.freeze([
  {id:'together',text:'Stick together team',label:'Håll ihop'},
