@@ -1,4 +1,4 @@
-import {updateAirPatrol} from './air-patrol.mjs';
+import {updateAirPatrol} from './air-patrol.mjs?v=control-zone-v19';
 /** Hissrum 12 bot flight: tactical, bounded and collision-aware.
  * The original Cartridge Strike bot controller still chooses its route,
  * aim and target. Flight only adds a vertical plan over the same real GLB
@@ -20,7 +20,7 @@ export function updateBotFlight(game,actor,input,dt){
  if(!actor.flying&&state.mode!=='ground'){
    state.mode='ground';state.goalY=0;state.nextAt=now+(agile?1.5:3.5);
  }
- const urgent=!!actor.action || game.bomb?.carrierId===actor.id ||
+ const urgent=(game.state.mode==='control'&&(actor.index===1||actor.index===2))||!!actor.action || game.bomb?.carrierId===actor.id ||
    game.bomb?.status==='planted' || game.hostages?.some(h=>h.escortId===actor.id);
  const tactical=game.config.tacticalAI===true;
  const bot=actor.bot;

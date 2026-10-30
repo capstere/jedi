@@ -1,12 +1,12 @@
 import {initializeTank,tickTank,controlTank,toggleTank,nearTank,drivingTank,tankRay,damageTank} from './cartridge-tank.mjs';
-import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs';
+import {initializeCombat,tickCombat,combatEvent} from './combat-flow.mjs?v=control-zone-v19';
 import { CONFIG, TEAMS, WEAPONS, PRIORITY, seededRandom, DIFFICULTIES, DEFAULT_DIFFICULTY, TEAMMATE_DIFFICULTY } from './config.mjs?v=hissrum-features-v3';
-import { BotController } from './bots.mjs?v=combat-comfort-v18';
-import {updateBotFlight} from './bot-flight.mjs?v=arsenal-v7';
+import { BotController } from './bots.mjs?v=control-zone-v19';
+import {updateBotFlight} from './bot-flight.mjs?v=control-zone-v19';
 import {rayBody as rayActor,automaticTrigger,resetAutoAim} from './aim-controls.mjs?v=cartridge-tank-v9';
 import {freshRecoil,recoverRecoil,kickRecoil,applyAimRecoil} from './recoil.mjs';
 import {grenadeLaunch,advanceGrenade} from './grenade-ballistics.mjs';
-import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=combat-comfort-v18';
+import {prepareActionRound,tickActionState,recordActionDeath,sendRadio,launchRocket,updateRockets,isEndless} from './action-rules.mjs?v=control-zone-v19';
 export { CONFIG, TEAMS, WEAPONS, DIFFICULTIES, DEFAULT_DIFFICULTY };
 
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -19,7 +19,7 @@ const EPS = 1e-8;
 /** One resolver owns the complete hybrid rule table. Candidates carry simulation
  * timestamps; render order cannot change priority at equal timestamps. */
 export function resolveRound(state, candidates = []) {
-  if (state.mode === 'endless' || state.phase !== 'active' || state.result) return null;
+  if (['endless','control'].includes(state.mode) || state.phase !== 'active' || state.result) return null;
   const list = candidates.filter(e => e.at <= state.time + EPS);
   const planted = state.bomb.status === 'planted';
   if (planted && state.time + EPS >= state.bomb.deadline) list.push({ reason: 'detonation', winner: 'counterAnalysts', at: state.bomb.deadline });

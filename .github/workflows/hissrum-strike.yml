@@ -82,6 +82,8 @@ jobs:
           name: hissrum-strike-browser
           retention-days: 3
           path: |
+            hissrum-strike-control-desktop.png
+            hissrum-strike-control-mobile.png
             hissrum-strike-comfort.png
             hissrum-strike-death-recap.png
             hissrum-strike-browser.png

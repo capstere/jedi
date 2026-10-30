@@ -3,6 +3,7 @@
 const {chromium}=require('playwright');
 const {PNG}=require('pngjs');
 const assert=require('node:assert/strict');
+const {runControlUI}=require('./control-zone-ui.cjs');
 const {runComfortChecks}=require('./comfort-browser-checks.cjs');
 const {runInputHudPolishChecks}=require('./input-hud-browser.cjs');
 const {spawn}=require('node:child_process');
@@ -61,6 +62,7 @@ async function launchReadyPage(context,tag,issues){
   await ready();
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle',
    '--use-angle=swiftshader','--enable-webgl','--enable-unsafe-swiftshader']});
+  await runControlUI(browser,url);
   await runComfortChecks(browser,url);
   const issues=[];
   const desktop=await browser.newContext({viewport:{width:1200,height:800},deviceScaleFactor:1});

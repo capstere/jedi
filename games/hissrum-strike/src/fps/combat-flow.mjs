@@ -30,7 +30,14 @@ export function createControlZones(world){
 export function initializeCombat(g){
  g.combatSpawnPools=new Map();g.combatGoalPools=new Map();
  for(const a of g.actors)resetLife(a);
- const zones=g.state.mode==='endless'&&g.config.firefight===true?createControlZones(g.world):[];
+ const zones=(g.state.mode==='control'||g.state.mode==='endless'&&g.config.firefight===true)?createControlZones(g.world):[];
+ if(g.state.mode==='control'){
+  zones.splice(3);
+  for(const z of zones){
+   const landmark=g.world.landmarks?.slice().sort((a,b)=>distance(a,z)-distance(b,z))[0];
+   if(landmark)z.name=landmark.name;
+  }
+ }
  g.state.combatFlow={zones,index:0,rotateAt:g.state.time+60,owner:null,capturing:null,progress:0,contested:false,occupants:[],hold:0,scores:{analysts:0,counterAnalysts:0},firstKill:false};
 }
 export function activeControl(g){return g.state.combatFlow?.zones[g.state.combatFlow.index]||null;}
@@ -52,13 +59,22 @@ export function tickCombat(g,dt){
   if(f.progress>=1-1e-7){
    f.owner=side;f.capturing=null;f.progress=0;
    // Captures affect the independent control score, NOT the enemy-kill score.
-   f.scores[side]+=5;
+   if(g.state.mode!=='control')f.scores[side]+=5;
    for(const a of inside){a.combat.captures++;medal(g,a,'OMRÅDE SÄKRAT',z.name,75,'capture');}
    g.emit('control-captured',null,{...z,team:side});
   }
  }else{
   f.capturing=null;f.progress=0;f.hold+=dt;
   if(f.hold>=1){const n=Math.floor(f.hold);f.scores[side]+=n;f.hold-=n;}
+ }
+ if(g.state.mode==='control'){
+  f.scores[side]=Math.min(100,f.scores[side]);
+  Object.assign(g.state.score,f.scores);
+  if(f.scores[side]>=100){
+   g.state.result={winner:side,reason:'control',round:g.state.round};
+   g.state.history.push(g.state.result);g.state.phase='match';
+   g.emit('match',null,{winner:side,reason:'control'});
+  }
  }
 }
 export function combatEvent(g,e){

@@ -164,7 +164,7 @@ export function updateAirPatrol(game,actor,input,dt){
     state.nextPlan=now;state.retreat=false;
   }
   const contact=patrolContact(bot,now);
-  const urgent=!!actor.action||game.bomb?.carrierId===actor.id||
+  const urgent=(game.state.mode==='control'&&(actor.index===1||actor.index===2))||!!actor.action||game.bomb?.carrierId===actor.id||
     game.bomb?.status==='planted'||game.hostages?.some(h=>h.escortId===actor.id);
   const recentHit=Number.isFinite(actor.hurtTime)&&now>=actor.hurtTime&&now-actor.hurtTime<1.8;
   const evade=!!contact&&(recentHit||actor.hp<38||actor.reloadUntil>now);

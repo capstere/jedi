@@ -4,6 +4,18 @@ En separat **spelbar FPS-spin-off** inuti originalmodellen `Hissrum12_V5_med_39_
 
 **Spelet är fristående från Layout Studio V5.** Ingen av studions befintliga filer, exporter eller scenarioskrivningar ändras av denna variant.
 
+## Kontrollzon
+
+Välj **Kontrollzon** i startmenyn. Erövra den markerade zonen genom att stå
+på marken i den i tre sekunder. Håll den med minst en lagmedlem för **1 poäng
+per sekund**; vid fiendenärvaro i zonen pausas poängen. Först till **100** vinner.
+Elimineringar ger personliga matchpoäng men inga zonpoäng.
+
+Zonen flyttar mellan tre gångbara platser var 60:e sekund. Golvring, minimap
+och uppdragsrad visar mål, ägare, erövring och nedräkning. Två botar per lag
+prioriterar markstrid; övriga kan flyga eller flankera. Respawn är aktiv.
+Endless och Classic finns kvar som separata lägen.
+
 ## Uppdatering 2026-10-30 — sikte, respawn och stridsöversikt
 
 - **Sikte & prestanda** i start- och pausmenyn: siktkänslighet 0,25–2,5×,
