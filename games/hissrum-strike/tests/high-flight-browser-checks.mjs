@@ -1,3 +1,4 @@
+import {respawnActor} from '../src/fps/action-rules.mjs';
 import {createHissrumWorld} from '../src/world.mjs';
 import {Game} from '../src/fps/game.mjs';
 import {updateBotFlight} from '../src/fps/bot-flight.mjs';
@@ -50,13 +51,13 @@ export async function runHighFlightChecks(suppliedWorld=null){
  // adapter is retained for maps without declared bounds; methods still close
  // over the SAME original GLB collision geometry. This is a small behavioral
  // sample, not a guarantee of fewer eliminations in every player's match.
- const matches=[];
+ const matches=[];let respawnGame;
  for(const proactive of [false,true])for(const seed of [21,42,83]){
   const adapter={...world};
   const game=new Game(adapter,{seed,difficulty:'normal',config:{mode:'endless',buyTime:0,
    loadout:'smg',botFlight:true,agileFlight:true,maxFlyingBots:4,botFlySpeed:4.5,
    tacticalAI:true,wanderers:false,respawnDelay:2.7,spawnProtection:1.4}});
-  game.start('analysts');
+  game.start('analysts');respawnGame=game;
   if(!proactive)delete adapter.bounds;
   let peak=0,range=0;
   for(let frame=0;frame<1800;frame++){
@@ -74,7 +75,20 @@ export async function runHighFlightChecks(suppliedWorld=null){
    botDeaths:game.actors.filter(a=>a.bot).reduce((n,a)=>n+a.deaths,0),
    peakHeight:+peak.toFixed(2),maxDisplacement:+range.toFixed(2)});
  }
- return {validCollisionSamples:validSamples,botsTakingInitiative:tookOff.size,maxFlying,
+ // Repeated team wipes test the actual model, standing clearance after a
+ // crouched death, and dynamic capsule occupancy across all ten respawns.
+ let verifiedRespawns=0;
+ for(let wave=0;wave<3;wave++){
+  for(const a of respawnGame.actors)Object.assign(a,{alive:false,height:1.08});
+  for(const a of respawnGame.actors){
+   require(respawnActor(respawnGame,a),'No safe real-model respawn for '+a.id);
+   require(world.canOccupy(a.x,a.z,a.radius,a.height,a.y),'Respawn intersected the original GLB');
+   require(a.height===respawnGame.config.standingHeight,'Crouched death leaked into new life');
+   require(!respawnGame.actors.some(b=>b!==a&&b.alive&&Math.hypot(a.x-b.x,a.z-b.z)<a.radius+b.radius),'Respawn overlapped a living actor');
+   verifiedRespawns++;
+  }
+ }
+ return {verifiedRespawns,validCollisionSamples:validSamples,botsTakingInitiative:tookOff.size,maxFlying,
   maxHeight:+maxHeight.toFixed(2),maxDisplacement:+maxDisplacement.toFixed(2),maxChecks,
   landings:events.filter(e=>e.type==='bot-landed').length,matches};
 }

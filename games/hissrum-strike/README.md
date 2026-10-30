@@ -4,6 +4,38 @@ En separat **spelbar FPS-spin-off** inuti originalmodellen `Hissrum12_V5_med_39_
 
 **Spelet är fristående från Layout Studio V5.** Ingen av studions befintliga filer, exporter eller scenarioskrivningar ändras av denna variant.
 
+## Uppdatering 2026-10-30 — sikte, respawn och stridsöversikt
+
+- **Sikte & prestanda** i start- och pausmenyn: siktkänslighet 0,25–2,5×,
+  synfält 65–100°, balanserad grafik eller lägre renderupplösning, och minskad
+  vapenrörelse. Valen sparas lokalt och kan återställas tillsammans. Dator/mobil
+  behåller sina tidigare standardvärden; Scope 5 behåller sitt 19° sikte.
+- **Dödsöversikt** visar angripare, vapen, totalt mottagna träffar/skada under
+  livet och tid till respawn. Uppgifterna kommer från regelmotorns sparade
+  dödshändelse. Touchknappar döljs tills spelaren återkommer. Spawnskyddets
+  återstående tid visas och följer samma faktiska skydd som tidigare.
+- **Respawn** testar alltid ståhöjd, även efter en död i hukläge. Platserna
+  kommer från samma anslutna golvnät som tidigare; levande kroppar, fordon
+  och verkliga GLB-hinder kontrolleras på nytt inför varje placering.
+  Kandidater fördelas över hela hemområdet, med högst 64 normala kandidater
+  (plus högst 32 i det valfria kontrollområdesläget). Misslyckade försök
+  återkommer högst fyra gånger per simuleringssekund och provar successivt
+  andra noder. Synkontroller görs endast där avståndet kan ge en riskpoäng.
+- **Botarnas eldlinje** kontrolleras i 3D med deras avsedda skottriktning.
+  En lagkamrat på golvet blockerar därför inte en fri luftstrid ovanför,
+  medan lagkamrater och neutrala figurer i den faktiska eldlinjen stoppar skott.
+- **Paus och meny** renderas högst tio gånger per sekund; dolt dokument
+  renderas inte. Aktivt spel behåller sin vanliga render- och simuleringstakt.
+  Tangentbordets pilar och mellanslag fungerar nu i menyformulär.
+
+`tests/combat-comfort.test.mjs` täcker placeringssäkerhet, arbetsbudget,
+blockerade försök, tredimensionella eldlinjer, inställningar och dödsöversikten.
+`tests/comfort-browser-checks.cjs` ingår i det vanliga Chromium-testet och
+kontrollerar faktisk UI, omladdad lokal lagring, sniperzoom, pausbudget,
+riktig skadehändelse och mobil rotation. Modelltestet för flygning verifierar
+även tre samtidiga lagutslagningar med totalt 30 giltiga återplaceringar.
+Actions kör samma verifiering men sparar bilder endast vid fel, i tre dagar.
+
 ## Starta
 
 1. Öppna repositoryts webbserver (GitHub Pages från repo-roten eller kör från repositoryts rot med `python3 -m http.server 8000`).

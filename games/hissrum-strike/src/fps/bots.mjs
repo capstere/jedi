@@ -2,7 +2,7 @@
 // bundled. Collision and paths come only from the accepted floor adapter.
 import { MemorySystem, SeekBehavior, State, StateMachine, Vector3, Vehicle } from '../../vendor/yuka/yuka.module.js';
 import { WEAPONS } from './config.mjs';
-import {actionObjective,friendlyLineClear} from './action-rules.mjs';
+import {actionObjective,friendlyLineClear} from './action-rules.mjs?v=combat-comfort-v18';
 import {angleDifference} from './riposte-fps-math.mjs';
 import { distanceSegment } from './physics.mjs';
 import {chooseTactic,latestSquadContact,planTacticalPosition} from './tactical-ai.mjs';
@@ -128,7 +128,7 @@ export class BotController {
       input.yaw = actor.yaw + Math.max(-turn, Math.min(turn, angleDelta(this.aimGoal.yaw, actor.yaw)));
       input.pitch = actor.pitch + Math.max(-turn, Math.min(turn, this.aimGoal.pitch - actor.pitch));
     }
-    if(input.fire&&!friendlyLineClear(this))input.fire=false;
+    if(input.fire&&!friendlyLineClear(this,input))input.fire=false;
     if (input.fire && !game.config.botFire) input.fire = false;
     // A cached visual record must not allow a shot after the target crosses a
     // wall/smoke between perception ticks. Recheck physical sight each shot.

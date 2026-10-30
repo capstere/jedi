@@ -1,6 +1,8 @@
+import {readPreferences,writePreferences,sanitizePreferences,pixelRatioFor,baseFov,shouldRender} from './player-preferences.mjs';
+import {lifeReadout} from './life-readout.mjs';
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
-import {Game,WEAPONS} from './fps/game.mjs?v=cartridge-tank-v9';
+import {Game,WEAPONS} from './fps/game.mjs?v=combat-comfort-v18';
 import {AudioSystem} from './audio.mjs?v=cartridge-tank-v9';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
@@ -24,6 +26,9 @@ const canvas=$('scene'),coarse=matchMedia('(pointer:coarse)').matches;
 const reducedMotionQuery=matchMedia('(prefers-reduced-motion: reduce)');
 const killFeedView=new KillFeedView($('killfeed'));
 let touchControls=null;
+let preferences=readPreferences(null);
+try{preferences=readPreferences(localStorage);}catch{}
+let lastRender=-Infinity;
 const keys=new Set(),actors=new Map(),hostages=new Map();
 const settings={sensitivity:.0021,mobileSensitivity:.0065,autoFire:true,trajectory:true,allyMarkers:true,combatFeedback:true};
 try{settings.autoFire=localStorage.getItem('hissrum.autoFire')!=='off';settings.trajectory=localStorage.getItem('hissrum.trajectory')!=='off';}catch{}
@@ -46,10 +51,10 @@ function setupGraphics(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color('#42575e');
   scene.fog=null;
-  camera=new THREE.PerspectiveCamera(coarse?84:76,1,.045,175);
+  camera=new THREE.PerspectiveCamera(baseFov(preferences,coarse),1,.045,175);
   camera.rotation.order='YXZ';
   renderer=new THREE.WebGLRenderer({canvas,antialias:!coarse,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1,coarse?1.25:1.65));
+  renderer.setPixelRatio(pixelRatioFor(preferences.quality,coarse,devicePixelRatio||1));
   // Do not call setSize(innerWidth,innerHeight) here: its default inline
   // canvas width can remain narrower than iPhone Safari's landscape HUD.
   renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -357,6 +362,8 @@ function renderShop(){
 }
 function syncSpecialHUD(){
  const p=game?.player;
+ setHidden('touch-controls',!coarse||!active||paused||!p?.alive);
+ $('crosshair').hidden=!p?.alive;
  const flying=!!p?.alive&&!!p.flying;
  const mounted=!!game&&drivingTank(game,p);
  const sniper=!!p?.alive&&!mounted&&p.weapon==='sniper';
@@ -414,7 +421,7 @@ function configureSound(value,unlock=true){
 function toggleSound(){configureSound(!soundEnabled);}
 function startGame(){
  if(!world)return;
- scoreOpen=false;setHidden('scoreboard',true);combatHUD?.reset();feed.length=0;
+ scoreOpen=false;setHidden('scoreboard',true);setHidden('life-card',true);setHidden('spawn-shield',true);combatHUD?.reset();feed.length=0;
  shopOpen=false;setHidden('shop',true);resetControls();grenadeView?.clear();
  clearCharacters();
  const mode=$('mode').value,difficulty=$('difficulty').value,loadout=$('loadout').value;
@@ -471,7 +478,7 @@ function resumeGame(){
  if(!coarse)requestLock();
 }
 function mainMenu(){
- scoreOpen=false;setHidden('scoreboard',true);combatHUD?.reset();
+ scoreOpen=false;setHidden('scoreboard',true);setHidden('life-card',true);setHidden('spawn-shield',true);combatHUD?.reset();
  resetControls();shopOpen=false;setHidden('shop',true);grenadeView?.clear();
  active=false;paused=false;if(game)game.pause(true);
  audioSystem?.reset();bloodEffects?.clear();actionVisuals?.clear();
@@ -511,7 +518,7 @@ function updateEvents(){
    if(event.type==='tank-enter'||event.type==='tank-exit'){clearScope();resetControls();syncSpecialHUD();notice(event.type==='tank-enter'?'CARTRIDGE · W/S KÖR · A/D SVÄNG · MUS/SVEP SIKTA':'DU HAR LÄMNAT FORDONET');}
    if(event.type==='tank-destroyed')notice('CARTRIDGE FÖRSTÖRD · ÅTERKOMMER PÅ STARTPLATSEN',3);
    if(event.type==='tank-exit-blocked')notice('UTGÅNGEN BLOCKERAD · FLYTTA BILEN');
-   if(event.type==='kill')addKill(event);
+   if(event.type==='kill'){addKill(event);if(event.actorId===game.player.id)resetControls();}
    if(event.type==='damage'&&event.actorId===game.player.id)damageUntil=performance.now()+220;
    if(event.type==='shot'&&event.actorId===game.player.id){shotUntil=performance.now()+75;gunKick=.085;weaponShotAt=game.state.time;}
    if(event.type==='reload'&&event.actorId===game.player.id)notice('LADDAR OM',1.4);
@@ -557,7 +564,7 @@ function cameraFollow(dt){
    camera.position.set(a.x,a.y+a.height-.12,a.z);
  }
  const scopeActive=p.alive&&!p.vehicleId&&p.weapon==='sniper'&&aiming;
- const desiredFov=scopeActive?19:(coarse?84:76);
+ const desiredFov=scopeActive?19:baseFov(preferences,coarse);
  if(Math.abs(camera.fov-desiredFov)>.02){
    camera.fov+=(desiredFov-camera.fov)*Math.min(1,dt*13);
    camera.updateProjectionMatrix();
@@ -580,7 +587,7 @@ function cameraFollow(dt){
    if(activeViewModel.visible){
      const pose=animateStrikeViewWeapon(activeViewModel,p,game.state.time,dt,{
        shotAt:weaponShotAt,switchAt:weaponSwitchAt,recoil:gunKick,
-       reducedMotion:reducedMotionQuery.matches
+       reducedMotion:preferences.motion==='reduced'||reducedMotionQuery.matches
      });
      muzzle.position.copy(pose.muzzle);
    }
@@ -658,9 +665,43 @@ function renderFeed(now){
  while(feed.length&&feed[feed.length-1].until<now)feed.pop();
  killFeedView.render(feed);
 }
+function updateLifeHUD(){
+ const info=lifeReadout(game,WEAPONS);
+ setHidden('life-card',info.kind!=='death');setHidden('spawn-shield',info.kind!=='protection');
+ if(info.kind==='death'){
+   $('life-title').textContent=info.title;$('life-detail').textContent=info.detail;
+   $('life-next').textContent=info.next;$('life-progress').style.transform=`scaleX(${info.progress})`;
+ }else if(info.kind==='protection')$('spawn-shield').textContent=info.title+' · skjut för att avbryta';
+}
+function setupPreferences(){
+ const sync=()=>{
+   for(const input of document.querySelectorAll('[data-preference]')){
+     const key=input.dataset.preference;input.value=preferences[key];
+     const output=input.parentElement.querySelector('output');
+     if(output)output.textContent=key==='sensitivity'?preferences[key].toFixed(2)+'×':preferences[key]+'°';
+   }
+ };
+ for(const input of document.querySelectorAll('[data-preference]'))input.addEventListener('input',()=>{
+   preferences=sanitizePreferences({...preferences,[input.dataset.preference]:input.value});
+   try{writePreferences(localStorage,preferences);}catch{}
+   sync();
+   if(input.dataset.preference==='quality'&&renderer){
+     renderer.setPixelRatio(pixelRatioFor(preferences.quality,coarse,devicePixelRatio||1));
+   }
+ });
+ for(const button of document.querySelectorAll('[data-reset-preferences]'))button.addEventListener('click',()=>{
+   preferences=sanitizePreferences({});preferences.fov=coarse?84:76;
+   try{writePreferences(localStorage,preferences);}catch{}sync();
+   renderer?.setPixelRatio(pixelRatioFor(preferences.quality,coarse,devicePixelRatio||1));
+ });
+ // A saved zero means use this device's original field of view.
+ if(!preferences.fov)preferences.fov=coarse?84:76;
+ sync();
+}
 function refreshHUD(now){
  if(!game)return;
  const s=game.state,p=game.player;
+ updateLifeHUD();
  $('score-a').textContent=s.score.analysts;
  $('score-b').textContent=s.score.counterAnalysts;
  $('alive-a').textContent=game.actors.filter(a=>a.alive&&a.team==='analysts').length;
@@ -699,8 +740,7 @@ function refreshHUD(now){
    s.bomb.status==='planted'?'DESARMERA BOMBEN · SKYDDA GISSLAN':
    'FÖRSVARA HISSRUMMET · HINDRA PLANTERING OCH RÄDDNING';
  $('spectating').hidden=p.alive;
- if(!p.alive){const at=p.respawnAt;const time=Number.isFinite(at)?' · '+Math.max(0,Math.ceil(at-s.time))+'s':' · NÄSTA RUNDA';
-   $('spectate-name').textContent=(game.spectator?.name||'LAGKAMRAT')+time;}
+ if(!p.alive)$('spectate-name').textContent=watchingPlayerDeath()?'DÖDSVY':(game.spectator?.name||'LAGKAMRAT');
  $('notify').style.opacity=now<noticeUntil?'1':'0';
  $('damage').style.boxShadow=now<damageUntil?'inset 0 0 17vw rgba(255,40,30,.48)':'inset 0 0 17vw rgba(255,40,30,0)';
  renderFeed(now);drawMinimap();
@@ -714,6 +754,8 @@ function refreshHUD(now){
 function frame(now){
  requestAnimationFrame(frame);
  if(!renderer)return;
+ if(!shouldRender(now,lastRender,!!(game&&active&&!paused),document.hidden)){lastFrame=now;return;}
+ lastRender=now;
  const dt=Math.min(.05,Math.max(0,(now-(lastFrame||now))/1000));lastFrame=now;
  if(game&&active&&!paused){
    if(game.phase!=='match')game.update(dt,activeInput());
@@ -760,7 +802,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='Tab'&&game&&((active&&!paused)||scoreOpen)){
    e.preventDefault();if(!e.repeat){if(scoreOpen)closeScoreboard();else openScoreboard();}return;
  }
- if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+ if(active&&!paused&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
  if(e.code==='Escape'){if(scoreOpen)closeScoreboard();else if(shopOpen)closeShop();else if(active&&!paused)pauseGame();return;}
  if(!game||!active||paused||e.repeat)return;
  if(e.code==='KeyR')game.reload();
@@ -790,7 +832,7 @@ document.addEventListener('mousemove',e=>{
  // that single start impulse so the player still faces the real CREFORM aisle.
  if(performance.now()-pointerLockedAt<280 ||
    Math.abs(e.movementX)>180 || Math.abs(e.movementY)>180)return;
- const sense=settings.sensitivity*(aiming?.48:1);
+ const sense=settings.sensitivity*preferences.sensitivity*(aiming?.48:1);
  lookYaw-=e.movementX*sense;
  lookPitch=clamp(lookPitch-e.movementY*sense,-1.48,1.48);
 });
@@ -807,7 +849,7 @@ function setupTouch(){
    enabled:()=>active&&!paused&&!shopOpen&&!scoreOpen,
    onMove:(strafe,forward)=>{touchStrafe=strafe;touchForward=forward;},
    onLook:(dx,dy)=>{
-     const sense=settings.mobileSensitivity*(aiming?.46:1);
+     const sense=settings.mobileSensitivity*preferences.sensitivity*(aiming?.46:1);
      lookYaw-=dx*sense;lookPitch=clamp(lookPitch-dy*sense,-1.48,1.48);
    },
    onPress:action=>{
@@ -867,6 +909,7 @@ $('back-menu').addEventListener('click',mainMenu);
 $('play-again').addEventListener('click',startGame);
 $('end-menu').addEventListener('click',mainMenu);
 setupTouch();
+setupPreferences();
 setupGraphics();
 requestAnimationFrame(frame);
 try{
@@ -888,6 +931,7 @@ try{
  if(new URLSearchParams(location.search).has('test')){
    window.__hissrumDiagnostics=()=>({
      scale:MINIATURE_SCALE,roomHeight:world.bounds.max.y,
+     preferences:{...preferences},renderCalls:renderer.info.render.frame,
      floorReference:world.statistics.floorReference,
      player:game?{x:game.player.x,y:game.player.y,z:game.player.z,yaw:game.player.yaw,eye:camera.position.y}:null,
      camera:{position:camera.position.toArray(),forward:camera.getWorldDirection(new THREE.Vector3()).toArray()},
@@ -959,6 +1003,12 @@ try{
    // Death previews mutate test fixtures only, never the production match.
    let hudTestSerial=9000000;
    window.__hissrumVisualTest={
+     previewFatalHit:()=>{
+       const p=game?.player,enemy=game?.actors.find(a=>a.team!==p?.team);
+       if(!p?.alive||!enemy)return false;
+       game.config.botFire=false;p.spawnProtectedUntil=0;
+       return game.damage(p,1000,enemy,'ar47');
+     },
      prepareTank:()=>{
        const t=game?.state.tank,p=game?.player;if(!t?.alive||!p)return false;
        // TEST ONLY: real model, original pad, same entry controls and cannon.

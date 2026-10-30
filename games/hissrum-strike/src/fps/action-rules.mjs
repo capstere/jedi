@@ -1,9 +1,11 @@
+import {chooseRespawn,SPAWN_RETRY_SECONDS} from './respawn.mjs';
+import {rayBody} from './aim-controls.mjs';
 import {tankRay} from './cartridge-tank.mjs';
 import {freshRecoil} from './recoil.mjs';
 import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs';
 /** Arcade rules. Simulation time only; visual/audio systems never own damage or respawns. */
 import {seededRandom, WEAPONS} from './config.mjs';
-import {BotController} from './bots.mjs';
+import {BotController} from './bots.mjs?v=combat-comfort-v18';
 export const MODES=Object.freeze({classic:'Klassiska rundor',endless:'Endless Action · auto-respawn'});
 export const RADIO=Object.freeze([
  {id:'together',text:'Stick together team',label:'Håll ihop'},
@@ -24,7 +26,7 @@ export function prepareActionRound(g){
  const s=g.state;s.mode=MODES[g.config.mode]?g.config.mode:'classic';s.projectiles=[];s.orders={};
  s.radioAt=-Infinity;s.radioLog=[];
  for(const h of s.hostages)Object.assign(h,{alive:true,hp:100,armor:0,deaths:0,deathAt:null,kind:'hostage',respawnAt:null});
- for(const a of g.actors){a.respawnAt=null;a.spawnProtectedUntil=0;a.teamKills??=0;}
+ for(const a of g.actors){a.respawnAt=null;a.nextRespawnAttempt=0;a.spawnRetryIndex=0;a.spawnProtectedUntil=0;a.teamKills??=0;}
  initializeWanderers(g);
  if(!isEndless(g))return;
  s.phase='active';s.buyDeadline=s.time;s.roundStartedAt=s.time;s.deadline=Infinity;
@@ -43,33 +45,14 @@ function equipEndless(g,a){
 }
 /** Stay on the accepted connected floor; maximize distance and break sight, never open a room. */
 export function respawnPoint(g,a){
- const anchors=g.world.anchors[a.team]||g.world.anchors.hostages;
- const home=anchors[a.index%anchors.length]||anchors[0];
- const nodes=g.world.navigation?.nodes||[];
- const candidates=[...combatSpawnCandidates(g,a),...anchors,...nodes.filter(n=>anchors.some(h=>dist(n,h)<7)).filter((_,i)=>i%3===0)].slice(0,180);
- const living=aliveBodies(g).filter(o=>o!==a);
- let best=null,bestScore=-Infinity;
- for(const p of candidates){
-  if(g.world.canOccupy&&!g.world.canOccupy(p.x,p.z,a.radius+.015,a.height,0))continue;
-  if(g.state.tank?.alive&&dist(p,g.state.tank)<g.state.tank.radius+a.radius+.2)continue;
-  if(living.some(o=>dist(o,p)<(o.radius||.2)+a.radius+.12))continue;
-  if(p.frontline&&living.some(o=>o.team&&o.team!==a.team&&dist(o,p)<7))continue;
-  const control=activeControl(g);
-  let score=-dist(p,home)*.08-(control?dist(p,control)*.22:0);
-  for(const e of living.filter(o=>o.team&&o.team!==a.team)){
-   const d=dist(e,p),visible=g.world.segmentClear({...p,y:1.4},eye(e),{vision:true});
-   score+=Math.min(d,22)*.025-(visible?Math.max(0,18-d)*1.1:0);
-  }
-  if(score>bestScore){best=p;bestScore=score;}
- }
- return best?{x:best.x,y:0,z:best.z,yaw:home.yaw??0}:null;
+ return chooseRespawn(g,a,{frontline:combatSpawnCandidates(g,a),control:activeControl(g)});
 }
 export function respawnActor(g,a){
- const p=respawnPoint(g,a);if(!p)return false; // retry next tick, never overlap another capsule
+ const p=respawnPoint(g,a);if(!p)return false; // retry on the bounded schedule, never overlap another capsule
  Object.assign(a,p,{vehicleId:null,hp:g.config.health,alive:true,height:g.config.standingHeight,vy:0,onGround:true,crouching:false,
   reloadUntil:0,nextShot:g.state.time+.15,flashUntil:0,flash:0,flashStart:0,action:null,moving:0,distanceWalked:0,recoil:0,flying:false,aimRecoil:freshRecoil(),rawAimYaw:p.yaw??0,rawAimPitch:0,autoAim:null,autoAimProgress:0,airPatrol:null,
   lastStep:g.state.time,fireHeld:false,interactHeld:false,jumpHeld:false,hurtTime:-Infinity,hurtDirection:null,deathAt:null,deathCause:null,
-  respawnAt:null,spawnProtectedUntil:g.state.time+g.config.spawnProtection,blockedBy:null});
+  respawnAt:null,nextRespawnAttempt:0,spawnRetryIndex:0,spawnProtectedUntil:g.state.time+g.config.spawnProtection,blockedBy:null});
  equipEndless(g,a);a.bot=(!a.isPlayer||g.autoplay)?new BotController(g,a):null;
  for(const other of g.actors){const memory=other.bot?.memory;if(memory?.hasRecord(a))memory.deleteRecord(a);}
  g.emit('respawn',a,{protection:g.config.spawnProtection});return true;
@@ -77,7 +60,9 @@ export function respawnActor(g,a){
 export function tickActionState(g,dt){
  const s=g.state;
  if(isEndless(g)){
-  for(const a of g.actors)if(!a.alive&&Number.isFinite(a.respawnAt)&&s.time>=a.respawnAt)respawnActor(g,a);
+  for(const a of g.actors)if(!a.alive&&Number.isFinite(a.respawnAt)&&s.time>=a.respawnAt&&s.time>=(a.nextRespawnAttempt||0)){
+   if(!respawnActor(g,a)){a.nextRespawnAttempt=s.time+SPAWN_RETRY_SECONDS;a.spawnRetryIndex=(a.spawnRetryIndex||0)+1;}
+  }
   for(const h of s.hostages)if((!h.alive||h.rescued)&&s.time>=h.respawnAt){
    const p=g.world.anchors.hostages[Number(h.id.split('-').at(-1))];
    if(!aliveBodies(g).some(a=>dist(a,p)<.55))Object.assign(h,p,{y:0,hp:100,alive:true,rescued:false,deathAt:null,respawnAt:null,escortId:null,path:[],moving:0,distanceWalked:0});
@@ -119,15 +104,19 @@ export function actionObjective(bot){
  else {bot.setGoal(points[(phase+a.index+1)%points.length]);a.aiState='patrullerar';}
  return true;
 }
-export function friendlyLineClear(bot){
+export function friendlyLineClear(bot,controls={}){
  const a=bot.actor,e=bot.target?.entity;if(!e)return true;
- const dx=e.x-a.x,dz=e.z-a.z,len=dx*dx+dz*dz;if(len<.01)return true;
+ const origin=eye(a),yaw=controls.yaw??a.yaw??0,pitch=controls.pitch??a.pitch??0;
+ const dir={x:-Math.sin(yaw)*Math.cos(pitch),y:Math.sin(pitch),z:-Math.cos(yaw)*Math.cos(pitch)};
+ const limit=Math.hypot(e.x-origin.x,(e.y||0)+(e.height||1.7)*.6-origin.y,e.z-origin.z);
+ // Use the impending shot in 3D: a teammate on the floor must not block a
+ // clear airborne shot, but a teammate crossing the real ray still does.
  return !aliveBodies(bot.game).some(b=>{
-  if(b===a||b===e||b.team&&b.team!==a.team)return false;
-  const t=((b.x-a.x)*dx+(b.z-a.z)*dz)/len;
-  return t>0&&t<1&&Math.hypot(b.x-a.x-t*dx,b.z-a.z-t*dz)<(b.radius||.2)+.07;
+  if(b===a||b===e||b.vehicleId||b.team&&b.team!==a.team)return false;
+  return rayBody(origin,dir,{...b,radius:(b.radius||.2)+.07},limit)!==null;
  });
 }
+
 /** Segment/AABB sweep is shared for bullets and projectiles by the core caller. */
 export function launchRocket(g,actor,dir){
  const p={...eye(actor),id:`rocket-${++g.eventSerial}`,ownerId:actor.id,team:actor.team,
