@@ -1,8 +1,9 @@
+import {ControlZoneView,controlReadout} from './control-zone-view.mjs';
 import {readPreferences,writePreferences,sanitizePreferences,pixelRatioFor,baseFov,shouldRender} from './player-preferences.mjs';
 import {lifeReadout} from './life-readout.mjs';
 import * as THREE from 'three';
 import {createHissrumWorld,MINIATURE_SCALE} from './world.mjs?v=hissrum-effects-v4';
-import {Game,WEAPONS} from './fps/game.mjs?v=combat-comfort-v18';
+import {Game,WEAPONS} from './fps/game.mjs?v=control-zone-v19';
 import {AudioSystem} from './audio.mjs?v=cartridge-tank-v9';
 import {CombatEffects} from './effects.mjs';
 import {ActionVisuals} from './action-visuals.mjs';
@@ -35,6 +36,7 @@ try{settings.autoFire=localStorage.getItem('hissrum.autoFire')!=='off';settings.
 try{settings.allyMarkers=localStorage.getItem('hissrum.allyMarkers')!=='off';settings.combatFeedback=localStorage.getItem('hissrum.combatFeedback')!=='off';}catch{}
 let tankView=null;
 let shopOpen=false,grenadeView=null,combatHUD=null,scoreOpen=false,scoreReturn='game';
+let controlZoneView;
 let scene,renderer,camera,world,game,modelRoot,weaponScene,weaponCamera,weaponStage,weaponModels=new Map(),activeViewModel,muzzle,gunKick=0,shotUntil=0,weaponShotAt=-Infinity,weaponSwitchAt=0;
 let active=false,paused=false,lookYaw=0,lookPitch=0,fire=false,interact=false,touchFire=false,touchJump=false,touchDescend=false,aiming=false,touchForward=0,touchStrafe=0;
 let mapBackdrop=null,tracers=[],tracerCursor=0,lastFrame=0,lastHud=0,noticeUntil=0,damageUntil=0;
@@ -483,7 +485,7 @@ function mainMenu(){
  active=false;paused=false;if(game)game.pause(true);
  audioSystem?.reset();bloodEffects?.clear();actionVisuals?.clear();
  clearScope();
- game=null;tankView?.update(null);clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
+ game=null;controlZoneView?.update(null);tankView?.update(null);clearCharacters();keys.clear();fire=false;touchFire=false;touchDescend=false;
  setHidden('pause',true);setHidden('match-end',true);setHidden('hud',true);
  setHidden('touch-controls',true);setHidden('menu',false);
  if(activeViewModel)activeViewModel.visible=false;
@@ -509,6 +511,8 @@ function updateEvents(){
    audioSystem.handle(events,p?{...p,y:p.y+p.height-.13}:null,game.state.time);
  }
  for(const event of events){
+   if(event.type==='control-moved')notice('NY KONTROLLZON · '+event.name,3);
+   if(event.type==='control-captured')notice((event.team===game.player.team?'VI':'FIENDEN')+' HAR SÄKRAT ZONEN',3);
    if(event.type==='tracer'&&event.from&&event.to)showTracer(event);
    if(event.type==='respawn'&&event.actorId===game.player.id){
      lookYaw=game.player.rawAimYaw??game.player.yaw;lookPitch=0;resetControls();clearScope();
@@ -642,6 +646,13 @@ function drawMinimap(){
  ctx.clearRect(0,0,190,190);ctx.drawImage(mapBackdrop,0,0);
  const xy=p=>[8+(p.x-b.min.x)/w*174,8+(p.z-b.min.z)/d*174];
  function dot(p,color,r=3){const [x,y]=xy(p);ctx.beginPath();ctx.fillStyle=color;ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+ const flow=game.state.combatFlow,zone=flow?.zones[flow.index];
+ if(zone){
+   const [x,y]=xy(zone);ctx.beginPath();ctx.strokeStyle=flow.contested?'#fff':flow.owner==='analysts'?'#77eee0':flow.owner==='counterAnalysts'?'#f89e63':'#ffe07a';ctx.lineWidth=2;
+   ctx.ellipse(x,y,zone.radius/w*174,zone.radius/d*174,0,0,Math.PI*2);ctx.stroke();
+   ctx.fillStyle=ctx.strokeStyle;ctx.font='bold 11px sans-serif';ctx.fillText(String.fromCharCode(65+flow.index),x-4,y+4);
+   if(flow.rotateAt-game.state.time<=10)dot(flow.zones[(flow.index+1)%flow.zones.length],'#fff',2);
+ }
  if(game.config.mode==='classic'){
    dot(world.anchors.bomb,'#ffe07a',5);
    for(const h of game.hostages)if(!h.rescued)dot(h,'#dfefef',3);
@@ -706,9 +717,9 @@ function refreshHUD(now){
  $('score-b').textContent=s.score.counterAnalysts;
  $('alive-a').textContent=game.actors.filter(a=>a.alive&&a.team==='analysts').length;
  $('alive-b').textContent=game.actors.filter(a=>a.alive&&a.team==='counterAnalysts').length;
- $('round').textContent=s.mode==='endless'?'ENDLESS ACTION':'RUNDA '+s.round;
+ $('round').textContent=s.mode==='control'?'KONTROLLZON · 100':s.mode==='endless'?'ENDLESS ACTION':'RUNDA '+s.round;
  $('phase').textContent=s.phase==='buy'?'FÖRBEREDELSE':s.phase==='active'?'STRID':s.phase==='result'?'AVGJORD':'MATCH';
- let timer=s.phase==='buy'?s.buyDeadline-s.time:s.mode==='endless'?s.time-s.roundStartedAt:s.deadline-s.time;
+ let timer=s.mode==='control'?s.combatFlow.rotateAt-s.time:s.phase==='buy'?s.buyDeadline-s.time:s.mode==='endless'?s.time-s.roundStartedAt:s.deadline-s.time;
  if(s.bomb.status==='planted')timer=s.bomb.deadline-s.time;
  $('clock').textContent=asTime(timer);
  $('health').textContent=Math.max(0,Math.ceil(p.hp));
@@ -736,7 +747,7 @@ function refreshHUD(now){
       ?(best<MINIATURE_SCALE*2.2?'NÄRA · ':'MOT · ')+nearest.name.replace(/ · kopia.*$/,'').slice(0,26)
       :'HISSRUM 12';
  }
- $('mission').textContent=s.mode==='endless'?(coarse?'HISSRUM 12 · MINI 5V5':'5 MOT 5 · MINIATYRSTRID I HISSRUM 12'):
+ $('mission').textContent=s.mode==='control'?controlReadout(game):s.mode==='endless'?(coarse?'HISSRUM 12 · MINI 5V5':'5 MOT 5 · MINIATYRSTRID I HISSRUM 12'):
    s.bomb.status==='planted'?'DESARMERA BOMBEN · SKYDDA GISSLAN':
    'FÖRSVARA HISSRUMMET · HINDRA PLANTERING OCH RÄDDNING';
  $('spectating').hidden=p.alive;
@@ -746,7 +757,7 @@ function refreshHUD(now){
  renderFeed(now);drawMinimap();
  if(s.phase==='match'){
    active=false;game.pause(true);
-   $('winner').textContent=s.score.analysts>=game.config.matchWins?'ANALYSTS VANN':'COUNTER VANN';
+   $('winner').textContent=s.result?.winner==='analysts'?'ANALYSTS VANN':'COUNTER VANN';
    setHidden('match-end',false);setHidden('touch-controls',true);
    if(document.pointerLockElement===canvas)document.exitPointerLock();
  }
@@ -775,6 +786,7 @@ function frame(now){
    actionVisuals?.update(game,camera);
    bloodEffects?.update(game.state.time,dt,camera);
    tankView?.update(game);
+   controlZoneView?.update(game);
    if(now-lastHud>100){refreshHUD(now);lastHud=now;}
    combatHUD?.update(game,camera,{enabled:active&&!paused,markers:settings.allyMarkers,
      feedback:settings.combatFeedback,scope:aiming,weapon:game.player.vehicleId?null:WEAPONS[game.player.weapon]});
@@ -917,7 +929,7 @@ try{
  progress('Laddar Cartridge Strike-karaktärer och animationsriggar…');
  const [room]=await Promise.all([createHissrumWorld(progress),loadCharacterLibrary()]);
  world=room;
- modelRoot=world.model;scene.add(modelRoot);
+ modelRoot=world.model;scene.add(modelRoot);controlZoneView=new ControlZoneView(scene);
  installRoomLighting();
  mapBackdrop=paintMapBackground();
  actionVisuals=new ActionVisuals(scene,world);
@@ -930,6 +942,7 @@ try{
  configureSound(true,false);
  if(new URLSearchParams(location.search).has('test')){
    window.__hissrumDiagnostics=()=>({
+     control:game?.state.mode==='control'?{...game.state.combatFlow,phase:game.phase,score:{...game.state.score},markerVisible:controlZoneView.root.visible}:null,
      scale:MINIATURE_SCALE,roomHeight:world.bounds.max.y,
      preferences:{...preferences},renderCalls:renderer.info.render.frame,
      floorReference:world.statistics.floorReference,

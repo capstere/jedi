@@ -2,11 +2,11 @@ import {chooseRespawn,SPAWN_RETRY_SECONDS} from './respawn.mjs';
 import {rayBody} from './aim-controls.mjs';
 import {tankRay} from './cartridge-tank.mjs';
 import {freshRecoil} from './recoil.mjs';
-import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs';
+import {controlObjective,combatSpawnCandidates,activeControl} from './combat-flow.mjs?v=control-zone-v19';
 /** Arcade rules. Simulation time only; visual/audio systems never own damage or respawns. */
 import {seededRandom, WEAPONS} from './config.mjs';
-import {BotController} from './bots.mjs?v=combat-comfort-v18';
-export const MODES=Object.freeze({classic:'Klassiska rundor',endless:'Endless Action · auto-respawn'});
+import {BotController} from './bots.mjs?v=control-zone-v19';
+export const MODES=Object.freeze({control:'Kontrollzon · först till 100',classic:'Klassiska rundor',endless:'Endless Action · auto-respawn'});
 export const RADIO=Object.freeze([
  {id:'together',text:'Stick together team',label:'Håll ihop'},
  {id:'fallback',text:'Fall back',label:'Dra er tillbaka'},
@@ -18,7 +18,7 @@ export const RADIO=Object.freeze([
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const pos=a=>({x:a.x,y:a.y||0,z:a.z});
 const eye=a=>({...pos(a),y:(a.y||0)+(a.height||1.7)-.12});
-export const isEndless=g=>g.state.mode==='endless';
+export const isEndless=g=>['endless','control'].includes(g.state.mode);
 const aliveBodies=g=>[...g.actors,...g.hostages,...(g.config.wanderers?g.state.wanderers||[]:[])].filter(a=>a.alive!==false&&!a.rescued);
 
 export function prepareActionRound(g){
@@ -32,7 +32,7 @@ export function prepareActionRound(g){
  s.phase='active';s.buyDeadline=s.time;s.roundStartedAt=s.time;s.deadline=Infinity;
  Object.assign(s.bomb,{status:'inactive',carrierId:null,deadline:Infinity,nextBeep:Infinity});
  for(const a of g.actors){equipEndless(g,a);a.spawnProtectedUntil=s.time+g.config.spawnProtection;}
- g.emit('start',null,{mode:'endless'});
+ g.emit('start',null,{mode:s.mode});
 }
 function equipEndless(g,a){
  const defaultWeapon=a.team==='analysts'?'ar47':'cr4';
@@ -74,7 +74,7 @@ export function tickActionState(g,dt){
 export function recordActionDeath(g,target,source){
  if(isEndless(g)){
   target.respawnAt=g.state.time+(['hostage','dwarf'].includes(target.kind)?10:g.config.respawnDelay);
-  if(target.team&&source?.team&&source!==target&&target.team!==source.team)g.state.score[source.team]++;
+  if(g.state.mode==='endless'&&target.team&&source?.team&&source!==target&&target.team!==source.team)g.state.score[source.team]++;
  }
  if(source&&source!==target&&source.team===target.team)source.teamKills=(source.teamKills||0)+1;
 }

@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=combat-comfort-v18">
+  <link rel="stylesheet" href="./style.css?v=control-zone-v19">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -29,7 +29,7 @@
     <div class="chips"><span>1:6 MINIATYR</span><span>39 ORIGINALOBJEKT</span><span>5 MOT 5 BOTAR</span><span>NYTT · CARTRIDGE-PANSARVAGN</span></div>
     <div class="menu-options">
       <label>Spelläge
-        <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
+        <select id="mode"><option value="endless">Endless — ständig action &amp; respawn</option><option value="control">Kontrollzon — håll zonen, först till 100</option><option value="classic">Classic — uppdrag &amp; rundor</option></select>
       </label>
       <label>Svårighet
         <select id="difficulty"><option value="casual">Casual</option><option value="normal">Normal</option><option value="hard">Hard</option></select>
@@ -71,7 +71,7 @@
       <button type="button" class="secondary" data-reset-preferences>ÅTERSTÄLL SIKTE &amp; PRESTANDA</button>
     </details>
     <button id="start" class="primary" disabled>FÖRBEREDER MODELLEN…</button>
-    <p class="menu-foot">Riktiga Cartridge Strike-vapen och animerade händer, dödsanimationer och utspridda startplatser över hela hissrummet. Lagmarkörer, riktad skadeindikator, tydliga huvudträffar och resultattavla hjälper dig läsa striden. V5-modellen är oförändrad.</p>
+    <p class="menu-foot">Riktiga Cartridge Strike-vapen och animerade händer, dödsanimationer och utspridda startplatser över hela hissrummet. Lagmarkörer, riktad skadeindikator, tydliga huvudträffar och resultattavla hjälper dig läsa striden. Kontrollzon: stå i zonen i 3 sekunder, håll för 1 poäng/s. Först till 100 vinner. V5-modellen är oförändrad.</p>
     <div class="menu-links">
       <a href="../../STARTA_HISSRUM_12_V5.html">Öppna originalstudion</a>
       <a href="./README.md">Om spelet</a>
@@ -193,6 +193,6 @@
     <button data-touch="scope" id="scope-toggle" aria-pressed="false" hidden>SIKTE</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=combat-comfort-v18"></script>
+<script type="module" src="./src/main.mjs?v=control-zone-v19"></script>
 </body>
 </html>

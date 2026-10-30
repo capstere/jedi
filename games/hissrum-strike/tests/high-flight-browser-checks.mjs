@@ -1,3 +1,4 @@
+import {runControlGeometryChecks} from './control-zone-browser-checks.mjs';
 import {respawnActor} from '../src/fps/action-rules.mjs';
 import {createHissrumWorld} from '../src/world.mjs';
 import {Game} from '../src/fps/game.mjs';
@@ -7,6 +8,7 @@ const require=(ok,message)=>{if(!ok)throw Error(message);};
 
 export async function runHighFlightChecks(suppliedWorld=null){
  const world=suppliedWorld||await createHissrumWorld(()=>{});
+ const control=runControlGeometryChecks(world);
  const events=[];
  const g={world,state:{time:0},config:{botFlight:true,agileFlight:true,maxFlyingBots:4,
   botFlySpeed:4.5,standingHeight:1.7,crouchingHeight:1.08,botSpeed:3.2,
@@ -88,7 +90,7 @@ export async function runHighFlightChecks(suppliedWorld=null){
    verifiedRespawns++;
   }
  }
- return {verifiedRespawns,validCollisionSamples:validSamples,botsTakingInitiative:tookOff.size,maxFlying,
+ return {control,verifiedRespawns,validCollisionSamples:validSamples,botsTakingInitiative:tookOff.size,maxFlying,
   maxHeight:+maxHeight.toFixed(2),maxDisplacement:+maxDisplacement.toFixed(2),maxChecks,
   landings:events.filter(e=>e.type==='bot-landed').length,matches};
 }
