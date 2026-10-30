@@ -354,3 +354,5 @@ input:focus-visible,summary:focus-visible{outline:3px solid var(--cyan);outline-
 @media(max-height:500px){#life-card{top:calc(50% + var(--aim-shift-y,0px) + 18px);padding:8px 12px}#life-card span{margin:3px 0}.life-track{margin-top:6px}}
 
 #life-card .spectating{position:static;transform:none;padding:0;background:none;font-size:10px;font-weight:500;color:#b9cbce;margin-top:6px}
+
+#life-card .spectating span{display:inline;margin:0;font:inherit;color:inherit}

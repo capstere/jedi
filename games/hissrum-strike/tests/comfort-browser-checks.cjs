@@ -55,7 +55,10 @@ async function runComfortChecks(browser,url){
   // No real enemy moves are revealed by the recap. Rotation preserves the
   // reduced backbuffer and the same CSS canvas/reticle coordinate system.
   await page.setViewportSize({width:844,height:390});
-  await page.waitForFunction(()=>window.__hissrumDiagnostics().viewport.canvas.width>800);
+  await page.waitForFunction(()=>{
+   const v=window.__hissrumDiagnostics().viewport;
+   return v.canvas.width>800&&Math.abs(v.pixelWidth-v.canvas.width*.85)<2;
+  },null,{timeout:15000});
   const landscape=await page.evaluate(()=>window.__hissrumDiagnostics().viewport);
   assert.ok(Math.abs(landscape.reticle.x-landscape.canvas.width/2)<1);
   assert.ok(Math.abs(landscape.pixelWidth-landscape.canvas.width*.85)<2);
