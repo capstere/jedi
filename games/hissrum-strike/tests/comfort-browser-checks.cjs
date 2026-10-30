@@ -49,7 +49,9 @@ async function runComfortChecks(browser,url){
   assert.match(await page.locator('#life-detail').textContent(),/AR-47.*träffar.*skada/);
   assert.equal(await page.locator('#touch-controls').isVisible(),false,'no unusable controls over the death recap');
   await page.screenshot({path:'hissrum-strike-death-recap.png',timeout:90000});
-  await page.waitForSelector('#life-card',{state:'hidden',timeout:30000});
+  await page.waitForSelector('#life-card',{state:'hidden',timeout:90000}).catch(async error=>{
+   console.error('Respawn UI diagnostics',await page.evaluate(()=>({game:window.__hissrumDiagnostics(),life:document.getElementById('life-next').textContent,pause:!document.getElementById('pause').hidden})));throw error;
+  });
   // No real enemy moves are revealed by the recap. Rotation preserves the
   // reduced backbuffer and the same CSS canvas/reticle coordinate system.
   await page.setViewportSize({width:844,height:390});

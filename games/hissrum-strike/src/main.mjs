@@ -1007,9 +1007,7 @@ try{
        const p=game?.player,enemy=game?.actors.find(a=>a.team!==p?.team);
        if(!p?.alive||!enemy)return false;
        game.config.botFire=false;p.spawnProtectedUntil=0;
-       const killed=game.damage(p,1000,enemy,'ar47');
-       if(killed)p.respawnAt=game.state.time+8;
-       return killed;
+       return game.damage(p,1000,enemy,'ar47');
      },
      prepareTank:()=>{
        const t=game?.state.tank,p=game?.player;if(!t?.alive||!p)return false;
