@@ -112,3 +112,11 @@ test('blocked spawn sampling advances to previously omitted safe nodes',()=>{
  assert.equal(chooseRespawn(g,a),null);
  a.spawnRetryIndex=1;assert.equal(chooseRespawn(g,a).x,.01);
 });
+
+test('death recap names cannon, collision and destroyed vehicles without mislabeling them as environment',()=>{
+ const {g,a}=fixture();
+ for(const [weapon,name] of [['cannon','Cartridge-kanon'],['ram','Påkörning'],['tank-wreck','Förstört fordon']]){
+  a.combat={recap:{attacker:'C-01',weapon,hits:1,damage:100}};
+  assert.ok(lifeReadout(g,WEAPONS).detail.startsWith(name));
+ }
+});
