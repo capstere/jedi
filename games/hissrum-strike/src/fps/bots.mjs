@@ -128,7 +128,7 @@ export class BotController {
       input.yaw = actor.yaw + Math.max(-turn, Math.min(turn, angleDelta(this.aimGoal.yaw, actor.yaw)));
       input.pitch = actor.pitch + Math.max(-turn, Math.min(turn, this.aimGoal.pitch - actor.pitch));
     }
-    if(input.fire&&!friendlyLineClear(this))input.fire=false;
+    if(input.fire&&!friendlyLineClear(this,input))input.fire=false;
     if (input.fire && !game.config.botFire) input.fire = false;
     // A cached visual record must not allow a shot after the target crosses a
     // wall/smoke between perception ticks. Recheck physical sight each shot.

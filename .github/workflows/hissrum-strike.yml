@@ -31,6 +31,7 @@ jobs:
       - name: Check test-runner source syntax before installing Chromium
         run: |
           node --check games/hissrum-strike/tests/browser-smoke.cjs
+          node --check games/hissrum-strike/tests/comfort-browser-checks.cjs
           node --check games/hissrum-strike/tests/grenade-view-browser.cjs
           node --check games/hissrum-strike/tests/audio-work-browser.cjs
           node --check games/hissrum-strike/tests/effects-work-browser.cjs
@@ -76,10 +77,13 @@ jobs:
       - name: Load the real GLB and play a smoke round
         run: node games/hissrum-strike/tests/browser-smoke.cjs
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: hissrum-strike-browser
+          retention-days: 3
           path: |
+            hissrum-strike-comfort.png
+            hissrum-strike-death-recap.png
             hissrum-strike-browser.png
             hissrum-strike-mobile.png
             hissrum-strike-landscape-crosshair.png

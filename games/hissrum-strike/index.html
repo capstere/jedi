@@ -7,7 +7,7 @@
   <meta name="description" content="Hissrum Strike — en miniatyr-FPS spin-off av Cartridge Strike i originalmodellen av Hissrum 12.">
   <title>Hissrum Strike | Miniature FPS</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./style.css?v=landscape-reticle-v17">
+  <link rel="stylesheet" href="./style.css?v=combat-comfort-v18">
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
   </script>
@@ -62,6 +62,14 @@
         <select id="bot-flight-mode"><option value="on" selected>På — taktiskt</option><option value="off">Av</option></select>
       </label>
     </div>
+    <details class="comfort-settings"><summary>Sikte &amp; prestanda</summary>
+      <label>Siktkänslighet <output>1.00×</output><input aria-label="Siktkänslighet" data-preference="sensitivity" type="range" min="0.25" max="2.5" step="0.05" value="1"></label>
+      <label>Synfält <output>76°</output><input aria-label="Synfält" data-preference="fov" type="range" min="65" max="100" step="1" value="76"></label>
+      <label>Grafik<select data-preference="quality"><option value="balanced">Balanserad</option><option value="performance">Prestanda · lägre upplösning</option></select></label>
+      <label>Vapenrörelse<select data-preference="motion"><option value="system">Följ enhetens inställning</option><option value="reduced">Minskad rörelse</option></select></label>
+      <p>Gäller mus och pekskärm. Sparas på denna enhet. Synfältet ändrar inte kikarsiktets zoom.</p>
+      <button type="button" class="secondary" data-reset-preferences>ÅTERSTÄLL SIKTE &amp; PRESTANDA</button>
+    </details>
     <button id="start" class="primary" disabled>FÖRBEREDER MODELLEN…</button>
     <p class="menu-foot">Riktiga Cartridge Strike-vapen och animerade händer, dödsanimationer och utspridda startplatser över hela hissrummet. Lagmarkörer, riktad skadeindikator, tydliga huvudträffar och resultattavla hjälper dig läsa striden. V5-modellen är oförändrad.</p>
     <div class="menu-links">
@@ -96,7 +104,12 @@
   <div id="combat-medal" role="status" hidden><small id="medal-points"></small><strong id="medal-title"></strong><span id="medal-detail"></span></div>
   <div id="damage" aria-hidden="true"></div>
   <div id="notify" role="status"></div>
-  <div class="spectating" id="spectating" hidden>UTSLAGEN · <span id="spectate-name">INVÄNTAR RESPAWN</span></div>
+  <div id="spawn-shield" role="status" hidden></div>
+  <aside id="life-card" hidden aria-label="Din senaste strid">
+    <strong id="life-title"></strong><span id="life-detail"></span><b id="life-next"></b>
+    <div class="spectating" id="spectating" hidden>KAMERA · <span id="spectate-name"></span></div>
+    <div class="life-track" aria-hidden="true"><i id="life-progress"></i></div>
+  </aside>
   <footer class="hud-bottom">
     <div class="hp-block"><span>HÄLSA</span><strong id="health">100</strong><small id="armor">RUSTNING 0</small></div>
     <div class="weapon-block"><span id="weapon">VECTOR C</span><strong><b id="ammo">30</b> <small>/ <span id="reserve">120</span></small></strong><small id="reload-hint">R · LADDA OM</small><div id="reload-meter" role="progressbar" aria-label="Omladdning" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><i></i></div></div>
@@ -122,6 +135,14 @@
     <label class="pause-setting">Träff- och stridsfeedback
       <select id="combat-feedback-pause"><option value="on">Tydlig feedback</option><option value="off">Avskalad</option></select>
     </label>
+    <details class="comfort-settings"><summary>Sikte &amp; prestanda</summary>
+      <label>Siktkänslighet <output>1.00×</output><input aria-label="Siktkänslighet" data-preference="sensitivity" type="range" min="0.25" max="2.5" step="0.05" value="1"></label>
+      <label>Synfält <output>76°</output><input aria-label="Synfält" data-preference="fov" type="range" min="65" max="100" step="1" value="76"></label>
+      <label>Grafik<select data-preference="quality"><option value="balanced">Balanserad</option><option value="performance">Prestanda · lägre upplösning</option></select></label>
+      <label>Vapenrörelse<select data-preference="motion"><option value="system">Följ enhetens inställning</option><option value="reduced">Minskad rörelse</option></select></label>
+      <p>Gäller mus och pekskärm. Sparas på denna enhet. Synfältet ändrar inte kikarsiktets zoom.</p>
+      <button type="button" class="secondary" data-reset-preferences>ÅTERSTÄLL SIKTE &amp; PRESTANDA</button>
+    </details>
     <button id="resume" class="primary">FORTSÄTT SPELA</button>
     <button id="restart" class="secondary">STARTA OM MATCH</button>
     <button id="back-menu" class="secondary">TILL HUVUDMENYN</button>
@@ -172,6 +193,6 @@
     <button data-touch="scope" id="scope-toggle" aria-pressed="false" hidden>SIKTE</button>
   </div>
 </div>
-<script type="module" src="./src/main.mjs?v=landscape-reticle-v17"></script>
+<script type="module" src="./src/main.mjs?v=combat-comfort-v18"></script>
 </body>
 </html>
